@@ -94,25 +94,33 @@ export const getDepartmentWiseFaculty = async (req, res) => {
       },
     ]);
 
-    const result = {
-      Professors: 0,
-      "Associate Professors": 0,
-      "Assistant Professors": 0,
-    };
+    // Initialize counts
+    let professorCount = 0;
+    let assistantCount = 0;
+    let associateCount = 0;
 
     data.forEach((item) => {
       const cleanedDesig = item._id.replace(/[^a-zA-Z ]/g, "").trim().toLowerCase();
-      if (cleanedDesig.includes("assistant")) result["Assistant Professors"] += item.count;
-      else if (cleanedDesig.includes("associate")) result["Associate Professors"] += item.count;
-      else if (cleanedDesig.includes("professor")) result["Professors"] += item.count;
+
+      if (cleanedDesig.includes("assistant")) assistantCount += item.count;
+      else if (cleanedDesig.includes("associate")) associateCount += item.count;
+      else if (cleanedDesig.includes("professor")) professorCount += item.count;
     });
 
-    res.status(200).json(result);
+    // Final formatted response
+    const formattedResult = [
+      { Class: "1st", Designation: "Professor", Count: professorCount },
+      { Class: "2nd", Designation: "Assistant Professor", Count: assistantCount },
+      { Class: "3rd", Designation: "Associate Professor", Count: associateCount },
+    ];
+
+    res.status(200).json(formattedResult);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 
 
