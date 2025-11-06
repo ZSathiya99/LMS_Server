@@ -2,52 +2,130 @@ import Faculty from "../models/Faculty.js";
 import xlsx from "xlsx";
 
 // ✅ Add single faculty
+
 export const addFaculty = async (req, res) => {
   try {
-    const { employeeId, name, designation, department, email, phone } = req.body;
-    const existing = await Faculty.findOne({ employeeId });
-    if (existing) return res.status(400).json({ message: "Employee already exists" });
+    console.log("Body received:", req.body);
+    console.log("Files received:", req.files);
 
-    const faculty = await Faculty.create({
-      employeeId,
-      name,
-      designation,
-      department,
+    const {
+      salutation,
+      firstName,
+      lastName,
+      gender,
+      dateOfBirth,
       email,
-      phone,
+      mobileNumber,
+      qualification,
+      workType,
+      employeeId,
+      joiningDate,
+      jobTitle,
+      designation,
+      // timeType,
+      reportingManager,
+      department,
+      noticePeriod,
+      // user,
+    } = req.body;
+
+    // ✅ Create new faculty record
+    const faculty = await Faculty.create({
+      salutation,
+      firstName,
+      lastName,
+      gender,
+      dateOfBirth,
+      email,
+      mobileNumber,
+      qualification,
+      workType,
+      employeeId,
+      joiningDate,
+      jobTitle,
+      designation,
+      // timeType,
+      reportingManager,
+      department,
+      noticePeriod,
+      // user,
+      documents: {
+        markSheet: req.files?.markSheet?.[0]?.path || null,
+        experienceCertificate: req.files?.experienceCertificate?.[0]?.path || null,
+        degreeCertificate: req.files?.degreeCertificate?.[0]?.path || null,
+      },
     });
 
-    res.status(201).json(faculty);
+    res.status(201).json({ message: "Faculty added successfully", faculty });
   } catch (error) {
+    console.error("❌ Error in addFaculty:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
+
 // ✅ Multiple upload (Excel or CSV)
+
 export const uploadMultipleFaculty = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
 
+    // Read Excel file
     const workbook = xlsx.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    // Example Excel headers: EmployeeID, Name, Designation, Department, Email, Phone
-    const facultyData = sheetData.map((row) => ({
-      employeeId: row.EmployeeID?.toString(),
-      name: row.Name,
-      designation: row.Designation,
-      department: row.Department,
-      email: row.Email,
-      phone: row.Phone?.toString(),
-    }));
+    // 🧠 Convert Excel rows into Faculty schema format
+    const facultyData = sheetData.map((row) => {
+      // Split full name into first and last name safely
+      let firstName = "";
+      let lastName = "";
 
+      if (row.Name) {
+        const parts = row.Name.trim().split(" ");
+        firstName = parts[0];
+        lastName = parts.slice(1).join(" ") || parts[0] || "N/A";
+      } else {
+        firstName = "Unknown";
+        lastName = "Unknown";
+      }
+
+      return {
+        salutation: row.Salutation || "Mr.",
+        firstName,
+        lastName,
+        gender: row.Gender || "Not Specified",
+        dateOfBirth: row.DateOfBirth || null,
+        email: row.Email || "",
+        mobileNumber: row.Phone?.toString() || "0000000000",
+        qualification: row.Qualification || "",
+        workType: row.WorkType || "Full-Time",
+        employeeId: row.EmployeeID?.toString() || "",
+        joiningDate: row.JoiningDate || "",
+        jobTitle: row.JobTitle || row.Designation || "",
+        designation: row.Designation || "",
+        timeType: row.TimeType || "",
+        reportingManager: row.ReportingManager || "",
+        department: row.Department || "",
+        noticePeriod: row.NoticePeriod || "",
+      };
+    });
+
+    // 🚀 Bulk insert into MongoDB
     await Faculty.insertMany(facultyData);
-    res.json({ message: "Faculty data uploaded successfully" });
+
+    res.status(200).json({
+      message: "Faculty data uploaded successfully",
+      insertedCount: facultyData.length,
+    });
   } catch (error) {
+    console.error("❌ Error in uploadMultipleFaculty:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ✅ Get all faculty
 export const getAllFaculty = async (req, res) => {
@@ -71,15 +149,19 @@ export const getDepartmentWise = async (req, res) => {
   }
 };
 
-
-
 // GET /api/faculty/department-wise/:department
 export const getDepartmentWiseFaculty = async (req, res) => {
   try {
     const { department } = req.params;
 
-    const cleanDept = department.replace(/[^a-zA-Z ]/g, "").trim();
+    if (!department || typeof department !== "string") {
+      return res.status(400).json({ message: "Invalid or missing department parameter" });
+    }
 
+    // 🧹 Clean and normalize department name (remove quotes/spaces)
+    const cleanDept = department.replace(/['"]+/g, "").trim();
+
+    // 🧮 Aggregate only selected department
     const data = await Faculty.aggregate([
       {
         $match: {
@@ -94,32 +176,33 @@ export const getDepartmentWiseFaculty = async (req, res) => {
       },
     ]);
 
-    // Initialize counts
+    // 🧾 Initialize counts
     let professorCount = 0;
-    let assistantCount = 0;
     let associateCount = 0;
+    let assistantCount = 0;
 
+    // 🧠 Classify counts by designation
     data.forEach((item) => {
-      const cleanedDesig = item._id.replace(/[^a-zA-Z ]/g, "").trim().toLowerCase();
+      const designation = (item._id || "").toLowerCase();
 
-      if (cleanedDesig.includes("assistant")) assistantCount += item.count;
-      else if (cleanedDesig.includes("associate")) associateCount += item.count;
-      else if (cleanedDesig.includes("professor")) professorCount += item.count;
+      if (designation.includes("assistant")) assistantCount += item.count;
+      else if (designation.includes("associate")) associateCount += item.count;
+      else if (designation.includes("professor")) professorCount += item.count;
     });
 
-    // Final formatted response
-    const formattedResult = [
-      { Class: "1st", Designation: "Professor", Count: professorCount },
-      { Class: "2nd", Designation: "Assistant Professor", Count: assistantCount },
-      { Class: "3rd", Designation: "Associate Professor", Count: associateCount },
-    ];
-
-    res.status(200).json(formattedResult);
+    // ✅ Send clear response
+    res.status(200).json({
+      department: cleanDept,
+      professorCount,
+      associateCount,
+      assistantCount,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error in getDepartmentWiseFaculty:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 
 
@@ -128,23 +211,70 @@ export const getDepartmentWiseFaculty = async (req, res) => {
 export const getDashboardStats = async (req, res) => {
   try {
     const total = await Faculty.countDocuments();
-    const deansHods = await Faculty.countDocuments({
-      designation: { $regex: /(Dean|HOD)/i },
-    });
-    const professors = await Faculty.countDocuments({
-      designation: { $regex: /Professor/i },
-    });
-    const associateAssistant = await Faculty.countDocuments({
-      designation: { $regex: /(Associate|Assistant)/i },
-    });
+
+    // classify every record only once
+    const agg = await Faculty.aggregate([
+      {
+        $project: {
+          designation: { $ifNull: ["$designation", ""] }
+        }
+      },
+      {
+        $addFields: { desigLower: { $toLower: "$designation" } }
+      },
+      {
+        $addFields: {
+          category: {
+            $switch: {
+              branches: [
+                {
+                  case: { $regexMatch: { input: "$desigLower", regex: "hod|dean" } },
+                  then: "deanHod"
+                },
+                {
+                  case: { $regexMatch: { input: "$desigLower", regex: "assistant" } },
+                  then: "assistant"
+                },
+                {
+                  case: { $regexMatch: { input: "$desigLower", regex: "associate" } },
+                  then: "associate"
+                },
+                {
+                  case: { $regexMatch: { input: "$desigLower", regex: "professor" } },
+                  then: "professor"
+                }
+              ],
+              default: "other"
+            }
+          }
+        }
+      },
+      { $group: { _id: "$category", count: { $sum: 1 } } }
+    ]);
+
+    const counts = agg.reduce((acc, item) => {
+      acc[item._id] = item.count;
+      return acc;
+    }, {});
+
+    const deansAndHods = counts.deanHod || 0;
+    const professors = counts.professor || 0;
+    const associateCount = counts.associate || 0;
+    const assistantCount = counts.assistant || 0;
+    const associateAssistant = associateCount + assistantCount;
 
     res.json({
       totalFaculty: total,
-      deansAndHods: deansHods,
+      deansAndHods,
       professors,
-      associateAssistant,
+      associateAssistant
     });
   } catch (error) {
+    console.error("❌ Error in getDashboardStats:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+
