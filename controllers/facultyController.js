@@ -158,7 +158,7 @@ export const getDepartmentWiseFaculty = async (req, res) => {
       return res.status(400).json({ message: "Invalid or missing department parameter" });
     }
 
-    // 🧹 Clean and normalize department name (remove quotes/spaces)
+    // 🧹 Clean and normalize department name
     const cleanDept = department.replace(/['"]+/g, "").trim();
 
     // 🧮 Aggregate only selected department
@@ -176,32 +176,34 @@ export const getDepartmentWiseFaculty = async (req, res) => {
       },
     ]);
 
-    // 🧾 Initialize counts
+    // 🧾 Initialize counters
     let professorCount = 0;
-    let associateCount = 0;
     let assistantCount = 0;
+    let associateCount = 0;
 
-    // 🧠 Classify counts by designation
+    // 🧠 Categorize based on designation
     data.forEach((item) => {
-      const designation = (item._id || "").toLowerCase();
+      const desig = (item._id || "").toLowerCase();
 
-      if (designation.includes("assistant")) assistantCount += item.count;
-      else if (designation.includes("associate")) associateCount += item.count;
-      else if (designation.includes("professor")) professorCount += item.count;
+      if (desig.includes("assistant")) assistantCount += item.count;
+      else if (desig.includes("associate")) associateCount += item.count;
+      else if (desig.includes("professor")) professorCount += item.count;
     });
 
-    // ✅ Send clear response
-    res.status(200).json({
-      department: cleanDept,
-      professorCount,
-      associateCount,
-      assistantCount,
-    });
+    // ✅ Format response
+    const result = [
+      { Class: "1st", Designation: "Professor", Count: professorCount },
+      { Class: "2nd", Designation: "Assistant Professor", Count: assistantCount },
+      { Class: "3rd", Designation: "Associate Professor", Count: associateCount },
+    ];
+
+    res.status(200).json(result);
   } catch (error) {
     console.error("❌ Error in getDepartmentWiseFaculty:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 
 
