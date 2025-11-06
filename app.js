@@ -6,19 +6,50 @@ import authRoutes from "./routes/authRoutes.js";
 import facultyRoutes from "./routes/facultyRoutes.js";
 
 dotenv.config();
+
+// ✅ Connect MongoDB
 connectDB();
 
 const app = express();
-// app.use(cors());
+
+// ✅ CORS setup
 app.use(cors({
-  origin: ["http://localhost:5173", "https://your-frontend-domain.com"], // allow both local + deployed frontend
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true, // if using cookies or auth headers
+  origin: [
+    "http://localhost:5173",             // your local frontend
+    "https://your-frontend-domain.com",  // replace with your Render frontend
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
 }));
+
+// ✅ Handle preflight requests safely (Express v5 compatible)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// ✅ Parse JSON
 app.use(express.json());
 
+// ✅ Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/faculty", facultyRoutes);
 
+// ✅ Default route
+app.get("/", (req, res) => {
+  res.send("LMS Backend is running ✅");
+});
 
 export default app;
