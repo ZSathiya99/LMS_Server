@@ -34,7 +34,7 @@ export const addFaculty = async (req, res) => {
       salutation,
       firstName,
       lastName,
-      gender,
+      gender, 
       dateOfBirth,
       email,
       mobileNumber,

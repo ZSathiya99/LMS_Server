@@ -7,6 +7,7 @@ import {
   getDashboardStats,
   getDepartmentWiseFaculty,
 } from "../controllers/facultyController.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 import { uploadExcel, uploadDocuments } from "../middleware/upload.js";
 
 const router = express.Router();
@@ -21,6 +22,7 @@ router.post(
   ]),
   addFaculty
 );
+router.use(verifyToken);
 
 // 📤 Upload Excel for multiple faculty
 router.post("/upload", uploadExcel.single("file"), uploadMultipleFaculty);
