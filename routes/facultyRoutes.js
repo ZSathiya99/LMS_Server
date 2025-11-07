@@ -1,6 +1,8 @@
 import express from "express";
 import {
   addFaculty,
+  updateFaculty,
+  deleteFaculty,
   uploadMultipleFaculty,
   getAllFaculty,
   getDepartmentWise,
@@ -12,6 +14,8 @@ import { uploadExcel, uploadDocuments } from "../middleware/upload.js";
 
 const router = express.Router();
 
+/* ------------------------- PUBLIC OR OPEN ROUTES ------------------------- */
+
 // ➕ Add a single faculty (with PDFs/images)
 router.post(
   "/add-faculty",
@@ -22,6 +26,22 @@ router.post(
   ]),
   addFaculty
 );
+
+// ✏️ Update a faculty
+router.put(
+  "/faculty/:id",
+  uploadDocuments.fields([
+    { name: "markSheet", maxCount: 1 },
+    { name: "experienceCertificate", maxCount: 1 },
+    { name: "degreeCertificate", maxCount: 1 },
+  ]),
+  updateFaculty
+);
+
+// ❌ Delete a faculty
+router.delete("/faculty/:id", deleteFaculty);
+
+/* ---------------------- PROTECTED ROUTES (Token needed) ---------------------- */
 router.use(verifyToken);
 
 // 📤 Upload Excel for multiple faculty

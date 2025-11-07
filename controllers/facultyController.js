@@ -63,6 +63,58 @@ export const addFaculty = async (req, res) => {
   }
 };
 
+// Update Faculty
+export const updateFaculty = async (req, res) => {
+  try {
+    const { id } = req.params; // or you can use employeeId
+    console.log("Updating faculty:", id);
+    console.log("Body received:", req.body);
+    console.log("Files received:", req.files);
+
+    const updateData = { ...req.body };
+
+    // If there are new uploaded files, update their paths
+    if (req.files) {
+      updateData.documents = {
+        markSheet: req.files?.markSheet?.[0]?.path,
+        experienceCertificate: req.files?.experienceCertificate?.[0]?.path,
+        degreeCertificate: req.files?.degreeCertificate?.[0]?.path,
+      };
+    }
+
+    const faculty = await Faculty.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!faculty) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+
+    res.status(200).json({ message: "Faculty updated successfully", faculty });
+  } catch (error) {
+    console.error("❌ Error in updateFaculty:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+// Delete Faculty
+export const deleteFaculty = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const faculty = await Faculty.findByIdAndDelete(id);
+
+    if (!faculty) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+
+    res.status(200).json({ message: "Faculty deleted successfully" });
+  } catch (error) {
+    console.error("❌ Error in deleteFaculty:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 // ✅ Multiple upload (Excel or CSV)
 
