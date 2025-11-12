@@ -4,6 +4,8 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import facultyRoutes from "./routes/facultyRoutes.js";
+import subjectRoutes from "./routes/subjectRoutes.js";
+import adminAllocationRoutes from "./routes/adminAllocationRoutes.js";
 
 dotenv.config();
 
@@ -46,6 +48,9 @@ app.use(express.json());
 // ✅ Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/faculty", facultyRoutes);
+app.use("/api/subjects", subjectRoutes);
+
+app.use("/api/adminAllocation", adminAllocationRoutes);
 
 // ✅ Default route
 app.get("/", (req, res) => {

@@ -1,15 +1,27 @@
 import multer from "multer";
 import fs from "fs";
+import path from "path";
 
-const uploadDir = "uploads";
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+// 🗂 Create upload folders if not exist
+const baseUploadDir = "uploads";
+const subjectUploadDir = path.join(baseUploadDir, "subjects");
 
-// Common storage config
+if (!fs.existsSync(baseUploadDir)) fs.mkdirSync(baseUploadDir);
+if (!fs.existsSync(subjectUploadDir)) fs.mkdirSync(subjectUploadDir);
+
+// 🧱 Common storage setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    // If Excel upload, save in uploads/subjects
+    if (
+      file.mimetype === "application/vnd.ms-excel" ||
+      file.mimetype ===
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ) {
+      cb(null, subjectUploadDir);
+    } else {
+      cb(null, baseUploadDir); // PDFs, images, etc.
+    }
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -17,15 +29,16 @@ const storage = multer.diskStorage({
   },
 });
 
-// ✅ 1️⃣ For Excel files only (used in bulk upload)
+// ✅ 1️⃣ Excel upload (for subjects)
 const excelFileFilter = (req, file, cb) => {
   if (
     file.mimetype === "application/vnd.ms-excel" ||
-    file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    file.mimetype ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   ) {
     cb(null, true);
   } else {
-    cb(new Error("Only Excel files allowed!"), false);
+    cb(new Error("Only Excel files are allowed!"), false);
   }
 };
 
@@ -34,7 +47,7 @@ export const uploadExcel = multer({
   fileFilter: excelFileFilter,
 });
 
-// ✅ 2️⃣ For faculty documents (PDF, images, etc.)
+// ✅ 2️⃣ Document upload (for faculty PDFs, images)
 const documentFileFilter = (req, file, cb) => {
   const allowedTypes = [
     "application/pdf",
