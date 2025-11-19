@@ -21,5 +21,29 @@ const adminAllocationSchema = new mongoose.Schema({
     },
   ],
 });
+const AdminAllocationSchema = new mongoose.Schema({
+  semester: Number,
+  semesterType: String,
+  subjectType: String,
+  regulation: Number,
+  department: String,
+
+  subjects: [
+    {
+      subject: String,
+      sections: [
+        {
+          sectionName: String,
+          staff: {
+            name: String,
+            email: String,
+            facultyId: String
+          }
+        }
+      ]
+    }
+  ]
+});
+
 
 export default mongoose.model("AdminAllocation", adminAllocationSchema);

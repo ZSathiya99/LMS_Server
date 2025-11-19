@@ -3,6 +3,7 @@ import Faculty from "../models/Faculty.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import XLSX from "xlsx";
+import AdminAllocation from "../models/adminAllocationModel.js";
 
 
 
@@ -118,3 +119,5 @@ export const addSubject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+

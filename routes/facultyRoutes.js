@@ -9,14 +9,15 @@ import {
   getDashboardStats,
   getDepartmentWiseFaculty,
 } from "../controllers/facultyController.js";
+
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { uploadExcel, uploadDocuments } from "../middleware/upload.js";
 
 const router = express.Router();
 
-/* ------------------------- PUBLIC OR OPEN ROUTES ------------------------- */
+/* ============================= PUBLIC ROUTES ============================= */
 
-// ➕ Add a single faculty (with PDFs/images)
+// ➕ Add a single faculty (with file upload)
 router.post(
   "/add-faculty",
   uploadDocuments.fields([
@@ -27,7 +28,7 @@ router.post(
   addFaculty
 );
 
-// ✏️ Update a faculty
+// ✏️ Update faculty
 router.put(
   "/faculty/:id",
   uploadDocuments.fields([
@@ -41,22 +42,22 @@ router.put(
 // ❌ Delete a faculty
 router.delete("/faculty/:id", deleteFaculty);
 
-/* ---------------------- PROTECTED ROUTES (Token needed) ---------------------- */
+/* ============================ PROTECTED ROUTES ============================ */
 router.use(verifyToken);
 
-// 📤 Upload Excel for multiple faculty
+// 📤 Bulk upload (Excel)
 router.post("/upload", uploadExcel.single("file"), uploadMultipleFaculty);
 
 // 📋 Get all faculty
 router.get("/", getAllFaculty);
 
-// 📊 Get department-wise count
+// 📊 Department-wise faculty count
 router.get("/department-wise", getDepartmentWise);
 
-// 🧮 Get dashboard stats
+// 📈 Dashboard stats
 router.get("/stats", getDashboardStats);
 
-// 🧑‍🏫 Get faculty by department
+// 🧑‍🏫 Faculty list for specific department
 router.get("/department-wise/:department", getDepartmentWiseFaculty);
 
 export default router;

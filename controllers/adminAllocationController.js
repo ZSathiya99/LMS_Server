@@ -56,3 +56,78 @@ export const allocateSubjects = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+export const getHodDashboardSubjects = async (req, res) => {
+  try {
+    const { type, semester, regulation, department } = req.query;
+
+    if (!type || !semester || !regulation || !department) {
+      return res.status(400).json({ message: "Missing required parameters" });
+    }
+
+    // Get matching allocation
+    const allocation = await AdminAllocation.findOne({
+      subjectType: type,
+      semester: Number(semester),
+      regulation: Number(regulation),
+      department: department.toUpperCase(),
+    });
+
+    // If nothing found return empty array
+    if (!allocation) {
+      return res.json([]);
+    }
+
+    // Format subjects as required by frontend
+    const formattedData = allocation.subjects.map((item) => ({
+      subject: item.subject,
+      sections: item.sections.map((sec) => ({
+        sectionName: sec.sectionName,
+        staff: sec.staff ? { name: sec.staff.name } : null,
+      })),
+    }));
+
+    res.json(formattedData);
+
+  } catch (error) {
+    console.error("HOD Dashboard Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+// ⭐ ADD THIS FUNCTION
+export const getAllocatedSubjects = async (req, res) => {
+  try {
+    const { type, semester, regulation, department } = req.query;
+
+    const allocation = await AdminAllocation.findOne({
+      semester: Number(semester),
+
+      // Match theory/Theory/THEORY
+      subjectType: new RegExp(`^${type}$`, "i"),
+
+      // Match 2026 or "2026"
+      regulation: new RegExp(`^${regulation}$`, "i"),
+
+      // Match cse/CSE/Cse
+      department: new RegExp(`^${department}$`, "i")
+    });
+
+    if (!allocation) return res.json([]);
+
+    const formatted = allocation.subjects.map((item) => ({
+      subject: item.subject,
+      subjectCode : item.code,
+      sections: item.sections
+        ? item.sections.map(sec => ({
+            sectionName: sec.sectionName,
+            staff: sec.staff ? { name: sec.staff.name } : null
+          }))
+        : []
+    }));
+
+    res.json(formatted);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
