@@ -1,35 +1,36 @@
 import mongoose from "mongoose";
 
-const adminAllocationSchema = new mongoose.Schema({
+// const adminAllocationSchema = new mongoose.Schema({
+//   department: String,
+//   admin: {
+//     profileImg: String,
+//     firstName: String,
+//     lastName: String,
+//     salutation: String,
+//     email: String,
+//     department: String,
+//   },
+//   semester: Number,
+//   semesterType: String,
+//   subjectType: String,
+//   regulation: String,
+//   subjects: [
+//     {
+//       code: String,
+//       subject: String,
+//     },
+//   ],
+// });
+const AdminAllocationSchema = new mongoose.Schema({
   department: String,
-  admin: {
-    profileImg: String,
-    firstName: String,
-    lastName: String,
-    salutation: String,
-    email: String,
-    department: String,
-  },
   semester: Number,
   semesterType: String,
   subjectType: String,
   regulation: String,
-  subjects: [
-    {
-      code: String,
-      subject: String,
-    },
-  ],
-});
-const AdminAllocationSchema = new mongoose.Schema({
-  semester: Number,
-  semesterType: String,
-  subjectType: String,
-  regulation: Number,
-  department: String,
 
   subjects: [
     {
+      code: String,
       subject: String,
       sections: [
         {
@@ -46,4 +47,5 @@ const AdminAllocationSchema = new mongoose.Schema({
 });
 
 
-export default mongoose.model("AdminAllocation", adminAllocationSchema);
+
+export default mongoose.model("AdminAllocation", AdminAllocationSchema);

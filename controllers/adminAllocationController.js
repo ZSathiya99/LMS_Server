@@ -56,6 +56,7 @@ export const allocateSubjects = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 export const getHodDashboardSubjects = async (req, res) => {
   try {
     const { type, semester, regulation, department } = req.query;
@@ -99,29 +100,33 @@ export const getAllocatedSubjects = async (req, res) => {
     const { type, semester, regulation, department } = req.query;
 
     const allocation = await AdminAllocation.findOne({
-      semester: Number(semester),
-
-      // Match theory/Theory/THEORY
       subjectType: new RegExp(`^${type}$`, "i"),
-
-      // Match 2026 or "2026"
+      semester: Number(semester),
       regulation: new RegExp(`^${regulation}$`, "i"),
-
-      // Match cse/CSE/Cse
       department: new RegExp(`^${department}$`, "i")
     });
 
     if (!allocation) return res.json([]);
 
-    const formatted = allocation.subjects.map((item) => ({
-      subject: item.subject,
-      subjectCode : item.code,
-      sections: item.sections
-        ? item.sections.map(sec => ({
-            sectionName: sec.sectionName,
-            staff: sec.staff ? { name: sec.staff.name } : null
-          }))
-        : []
+    // Default temporary sections
+    const defaultSections = [
+      { sectionName: "Section A", staff: null },
+      { sectionName: "Section B", staff: null },
+      { sectionName: "Section C", staff: null }
+    ];
+
+    const formatted = allocation.subjects.map((sub) => ({
+      subject: sub.subject,
+
+      // If DB has sections, use them
+      // Otherwise return temporary sections
+      sections:
+        sub.sections && sub.sections.length > 0
+          ? sub.sections.map((sec) => ({
+              sectionName: sec.sectionName,
+              staff: sec.staff ? { name: sec.staff.name } : null
+            }))
+          : defaultSections
     }));
 
     res.json(formatted);
@@ -130,4 +135,6 @@ export const getAllocatedSubjects = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
