@@ -108,6 +108,7 @@ export const getHodDashboardData = async (req, res) => {
   try {
     const { type, semester, regulation, department } = req.query;
 
+    // 1. Fetch allocation
     const allocation = await AdminAllocation.findOne({
       subjectType: new RegExp(`^${type}$`, "i"),
       semester: Number(semester),
@@ -115,12 +116,14 @@ export const getHodDashboardData = async (req, res) => {
       department: new RegExp(`^${department}$`, "i"),
     });
 
+    // Default sections
     const defaultSections = [
       { sectionName: "Section A", staff: null },
       { sectionName: "Section B", staff: null },
       { sectionName: "Section C", staff: null },
     ];
 
+    // 2. Format subjects safely
     const subjects = allocation
       ? allocation.subjects.map((sub) => ({
           id: sub._id,
@@ -129,13 +132,18 @@ export const getHodDashboardData = async (req, res) => {
             sub.sections && sub.sections.length > 0
               ? sub.sections.map((sec) => ({
                   sectionName: sec.sectionName,
-                  staff: sec.staff ? { name: sec.staff.name } : null,
+                  staff:
+                    sec.staff &&
+                    sec.staff.name &&
+                    sec.staff.name.trim() !== ""
+                      ? { name: sec.staff.name }
+                      : null,
                 }))
               : defaultSections,
         }))
       : [];
 
-    // 🔥 FIX HERE → rename variables
+    // 3. Fetch faculty list
     const facultyRaw = await Faculty.find({
       department: new RegExp(`^${department}$`, "i"),
     }).select("firstName lastName email designation role");
@@ -148,15 +156,20 @@ export const getHodDashboardData = async (req, res) => {
       role: f.role,
     }));
 
-    return res.json({
+    // 4. Final combined response
+    res.json({
       subjects,
       faculty: facultyList,
     });
   } catch (error) {
+    console.error("Dashboard error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
+// ✔ POST → Assign staff
+// ✔ PUT → Update staff
+// ✔ DELETE → Remove staff
 export const assignStaffToSection = async (req, res) => {
   try {
     const {
@@ -188,7 +201,7 @@ export const assignStaffToSection = async (req, res) => {
     );
     if (!staff) return res.status(404).json({ message: "Staff not found" });
 
-    // 3. Find allocation document
+    // 3. Find matching allocation
     const allocation = await AdminAllocation.findOne({
       subjectType: new RegExp(`^${type}$`, "i"),
       semester,
@@ -206,12 +219,11 @@ export const assignStaffToSection = async (req, res) => {
       return res.status(404).json({ message: "Subject not found" });
     }
 
-    // 5. Find section in subject
+    // 5. Find OR Create section
     let section = subject.sections.find(
       (sec) => sec.sectionName === sectionName
     );
 
-    // If section not found, create it
     if (!section) {
       section = {
         sectionName,
@@ -220,7 +232,7 @@ export const assignStaffToSection = async (req, res) => {
       subject.sections.push(section);
     }
 
-    // 6. Assign staff
+    // 6. Assign staff object
     section.staff = {
       id: staffId,
       name: `${staff.firstName} ${staff.lastName}`,
@@ -228,7 +240,7 @@ export const assignStaffToSection = async (req, res) => {
       profileImg: staff.profileImg || null,
     };
 
-    // 7. Save changes
+    // 7. Save database
     await allocation.save();
 
     res.json({
@@ -242,6 +254,7 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 export const updateStaffForSection = async (req, res) => {
   try {
     const { sectionId } = req.params;
