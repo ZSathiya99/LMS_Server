@@ -75,20 +75,43 @@ export const getSubjectsByDepartment = async (req, res) => {
       return res.status(400).json({ message: "Department is required" });
     }
 
-    const subjects = await Subject.find({ department }).select("code subject");
-    const faculty = await Faculty.find({ department }).select(
-      "profileImg salutation firstName lastName email department"
-    );
+    const departmentMap = {
+      "CSE": "Computer Science and Engineering (CSE)",
+      "ECE": "Electronics and Communication Engineering (ECE)",
+      "EEE": "Electrical & Electronics Engineering (EEE)",
+      "IT": "Information Technology (IT)",
+      "MECH": "Mechanical Engineering (MECH)",
+      "CIVIL": "Civil Engineering (CIVIL)",
+      "AI&DS": "Artificial Intelligence & Data Science (AI&DS)",
+      "CSBS": "Computer Science and Business Systems (CSBS)"
+    };
+
+    // Convert short → full name for subjects
+    const fullDeptName = departmentMap[department] || department;
+
+    // 🔹 Subjects are stored using full department name
+    const subjects = await Subject.find({ department: fullDeptName })
+      .select("code subject");
+
+    // 🔹 Faculty are stored using short department name
+    const faculty = await Faculty.find({ department })
+      .select("salutation firstName lastName email department");
 
     if (!subjects.length && !faculty.length) {
       return res.status(404).json({ message: "No data found for this department" });
     }
 
-    res.status(200).json({ subjects, faculty });
+    res.status(200).json({
+      subjects,
+      faculty
+    });
+
   } catch (error) {
+    console.error("Dept fetch error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // ✅ New function (for POST)
