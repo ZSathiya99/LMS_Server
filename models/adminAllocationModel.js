@@ -11,19 +11,21 @@ const AdminAllocationSchema = new mongoose.Schema({
     {
       code: String,
       subject: String,
-      sections: [
-        {
-          sectionName: String,
-          staff: {
-            id: String,
-            name: String,
-            email: String,
-            profileImg: String
-          }
-        }
-      ]
+     sections: [
+  {
+    sectionName: { type: String, required: true },
+    staff: {
+      id: { type: String, default: null },
+      name: { type: String, default: null },
+      email: { type: String, default: null },
+      profileImg: { type: String, default: null }
     }
-  ]
+  }
+]
+
+    },
+  ],
 });
+
 
 export default mongoose.model("AdminAllocation", AdminAllocationSchema);
