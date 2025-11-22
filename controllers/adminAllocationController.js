@@ -165,6 +165,7 @@ export const getHodDashboardData = async (req, res) => {
 
           return {
             id: sub._id,
+            semesterType: allocation.semesterType,   // ⭐ ADDED HERE
             subject: sub.subject,
             sections: mergedSections,
           };
@@ -183,9 +184,7 @@ export const getHodDashboardData = async (req, res) => {
       role: f.role,
     }));
 
-    // ⭐ Add semesterType here
     res.json({
-      semesterType: allocation?.semesterType || null,
       subjects,
       faculty: facultyList,
     });
@@ -195,6 +194,7 @@ export const getHodDashboardData = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
