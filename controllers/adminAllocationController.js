@@ -47,7 +47,28 @@ export const allocateSubjects = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const allocation = new AdminAllocation({
+    // 🔍 Check if allocation already exists
+    let allocation = await AdminAllocation.findOne({
+      semester,
+      semesterType,
+      subjectType,
+      regulation,
+      department,
+    });
+
+    if (allocation) {
+      // 🔥 UPDATE existing allocation (push or replace)
+      allocation.subjects.push(...subjects);
+      await allocation.save();
+
+      return res.json({
+        message: "Subjects updated successfully",
+        allocation,
+      });
+    }
+
+    // ➕ CREATE new allocation
+    allocation = new AdminAllocation({
       semester,
       semesterType,
       subjectType,
@@ -66,6 +87,7 @@ export const allocateSubjects = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 export const getHodDashboardSubjects = async (req, res) => {
   try {
@@ -114,7 +136,7 @@ export const getHodDashboardData = async (req, res) => {
       semester: Number(semester),
       subjectType: { $regex: safe(type), $options: "i" },
       semesterType: { $regex: safe(semesterType), $options: "i" },
-      regulation: { $regex: safe(regulation), $options: "i" },
+      regulation: { $regex: safe(regulation.toString()), $options: "i" },
       department: { $regex: safe(department), $options: "i" },
     });
 
@@ -168,6 +190,7 @@ export const getHodDashboardData = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
