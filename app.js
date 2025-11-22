@@ -7,6 +7,7 @@ import facultyRoutes from "./routes/facultyRoutes.js";
 import subjectRoutes from "./routes/subjectRoutes.js";
 import adminAllocationRoutes from "./routes/adminAllocationRoutes.js";
 import allocationRoutes from "./routes/adminAllocationRoutes.js";
+import assignRoutes from "./routes/adminAllocationRoutes.js";
 // import hodRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
@@ -61,5 +62,6 @@ app.get("/", (req, res) => {
   res.send("LMS Backend is running ✅");
 });
 app.use("/api/allocation", allocationRoutes);
+app.use("/api", assignRoutes);
 
 export default app;
