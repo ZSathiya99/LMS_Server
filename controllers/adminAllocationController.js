@@ -47,18 +47,20 @@ export const allocateSubjects = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // 🔍 Check if allocation already exists
+    const safe = (v) => (v ? v.toString().trim() : "");
+
+    // 🔍 Match using same logic as GET API
     let allocation = await AdminAllocation.findOne({
-      semester,
-      semesterType,
-      subjectType,
-      regulation,
-      department,
+      semester: Number(semester),
+      semesterType: { $regex: safe(semesterType), $options: "i" },
+      subjectType: { $regex: safe(subjectType), $options: "i" },
+      regulation: { $regex: safe(regulation.toString()), $options: "i" },
+      department: { $regex: safe(department), $options: "i" },
     });
 
     if (allocation) {
-      // 🔥 UPDATE existing allocation (push or replace)
       allocation.subjects.push(...subjects);
+      allocation.markModified("subjects");
       await allocation.save();
 
       return res.json({
@@ -67,7 +69,6 @@ export const allocateSubjects = async (req, res) => {
       });
     }
 
-    // ➕ CREATE new allocation
     allocation = new AdminAllocation({
       semester,
       semesterType,
@@ -87,6 +88,7 @@ export const allocateSubjects = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 export const getHodDashboardSubjects = async (req, res) => {
