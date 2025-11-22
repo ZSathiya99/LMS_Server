@@ -210,15 +210,7 @@ export const assignStaffToSection = async (req, res) => {
       staffId,
     } = req.body;
 
-    if (
-      !department ||
-      !type ||
-      !semester ||
-      !regulation ||
-      !subjectId ||
-      !sectionName ||
-      !staffId
-    ) {
+    if (!department || !type || !semester || !regulation || !subjectId || !sectionName || !staffId) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -245,9 +237,7 @@ export const assignStaffToSection = async (req, res) => {
       return res.status(404).json({ message: "Subject not found" });
     }
 
-    let section = subject.sections.find(
-      (sec) => sec.sectionName === sectionName
-    );
+    let section = subject.sections.find((sec) => sec.sectionName === sectionName);
 
     if (!section) {
       section = { sectionName, staff: null };
@@ -260,6 +250,10 @@ export const assignStaffToSection = async (req, res) => {
       email: staff.email,
       profileImg: staff.profileImg || null,
     };
+
+    // ⭐⭐ IMPORTANT FIX ⭐⭐
+    subject.markModified("sections");
+    allocation.markModified("subjects");
 
     await allocation.save();
 
@@ -275,6 +269,7 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 export const updateStaffForSection = async (req, res) => {
