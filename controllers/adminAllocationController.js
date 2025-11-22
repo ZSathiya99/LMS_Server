@@ -183,15 +183,19 @@ export const getHodDashboardData = async (req, res) => {
       role: f.role,
     }));
 
+    // ⭐ Add semesterType here
     res.json({
+      semesterType: allocation?.semesterType || null,
       subjects,
       faculty: facultyList,
     });
+
   } catch (error) {
     console.error("Dashboard error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
@@ -206,18 +210,18 @@ export const assignStaffToSection = async (req, res) => {
       department,
       type,
       semester,
+      semesterType,
       regulation,
       subjectId,
       sectionName,
       staffId,
     } = req.body;
 
-    // ❌ Remove semesterType from required fields
-    if (!department || !type || !semester || !regulation || !subjectId || !sectionName || !staffId) {
+    // ✔ semesterType added back to required fields
+    if (!department || !type || !semester || !semesterType || !regulation || !subjectId || !sectionName || !staffId) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Fetch staff
     const staff = await Faculty.findById(staffId).select(
       "firstName lastName email profileImg"
     );
@@ -225,9 +229,10 @@ export const assignStaffToSection = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
-    // ⭐ Find allocation WITHOUT semesterType
+    // ✔ FIND allocation INCLUDING semesterType
     const allocation = await AdminAllocation.findOne({
       semester: Number(semester),
+      semesterType: { $regex: safe(semesterType), $options: "i" },
       subjectType: { $regex: safe(type), $options: "i" },
       regulation: { $regex: safe(regulation.toString()), $options: "i" },
       department: { $regex: safe(department), $options: "i" },
@@ -237,13 +242,11 @@ export const assignStaffToSection = async (req, res) => {
       return res.status(404).json({ message: "Allocation not found" });
     }
 
-    // Find subject
     const subject = allocation.subjects.id(subjectId);
     if (!subject) {
       return res.status(404).json({ message: "Subject not found" });
     }
 
-    // Find or create section
     let section = subject.sections.find((sec) => sec.sectionName === sectionName);
     if (!section) {
       section = { sectionName, staff: null };
@@ -258,7 +261,7 @@ export const assignStaffToSection = async (req, res) => {
       profileImg: staff.profileImg || null,
     };
 
-    // ⭐ Needed for first-time DB save
+    // ⭐ Required for first-time DB save
     subject.markModified("sections");
     allocation.markModified("subjects");
 
@@ -276,6 +279,8 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 
 
