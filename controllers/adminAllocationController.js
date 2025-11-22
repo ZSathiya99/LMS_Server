@@ -215,16 +215,7 @@ export const assignStaffToSection = async (req, res) => {
       staffId,
     } = req.body;
 
-    if (
-      !department ||
-      !subjectType ||
-      !semester ||
-      !semesterType ||
-      !regulation ||
-      !subjectId ||
-      !sectionName ||
-      !staffId
-    ) {
+    if (!department || !subjectType || !semester || !semesterType || !regulation || !subjectId || !sectionName || !staffId) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -235,24 +226,20 @@ export const assignStaffToSection = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
-    // ✅ FIXED MATCH
     const allocation = await AdminAllocation.findOne({
       semester: Number(semester),
       semesterType: { $regex: safe(semesterType), $options: "i" },
-      subjectType: { $regex: safe(subjectType), $options: "i" },
+      subjectType: { $regex: safe(subjectType), $options: "i" },  // ✔ FIXED HERE
       regulation: { $regex: safe(regulation.toString()), $options: "i" },
       department: { $regex: safe(department), $options: "i" },
     });
 
-    if (!allocation)
-      return res.status(404).json({ message: "Allocation not found" });
+    if (!allocation) return res.status(404).json({ message: "Allocation not found" });
 
     const subject = allocation.subjects.id(subjectId);
     if (!subject) return res.status(404).json({ message: "Subject not found" });
 
-    let section = subject.sections.find(
-      (sec) => sec.sectionName === sectionName
-    );
+    let section = subject.sections.find((sec) => sec.sectionName === sectionName);
 
     if (!section) {
       section = { sectionName, staff: null };
@@ -266,12 +253,9 @@ export const assignStaffToSection = async (req, res) => {
       profileImg: staff.profileImg || null,
     };
 
-    // ⭐⭐ REQUIRED FOR FIRST-TIME UPDATE ⭐⭐
     subject.markModified("sections");
     allocation.markModified("subjects");
-    allocation.markModified(
-      `subjects.${allocation.subjects.indexOf(subject)}.sections`
-    );
+    allocation.markModified(`subjects.${allocation.subjects.indexOf(subject)}.sections`);
 
     await allocation.save();
 
@@ -281,11 +265,14 @@ export const assignStaffToSection = async (req, res) => {
       sectionName,
       staff: section.staff,
     });
+
   } catch (error) {
     console.error("Assign staff error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 export const updateStaffForSection = async (req, res) => {
   try {
