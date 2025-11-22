@@ -106,46 +106,49 @@ export const getHodDashboardSubjects = async (req, res) => {
 // ⭐ ADD THIS FUNCTION
 export const getHodDashboardData = async (req, res) => {
   try {
-    const { type, semester, regulation, department } = req.query;
+    const { type, semester, regulation, department, semesterType } = req.query;
 
-    // 1. Fetch allocation
+    const safe = (val) => (val ? val.toString().trim() : "");
+
     const allocation = await AdminAllocation.findOne({
-      subjectType: new RegExp(`^${type}$`, "i"),
       semester: Number(semester),
-      regulation: new RegExp(`^${regulation}$`, "i"),
-      department: new RegExp(`^${department}$`, "i"),
+      subjectType: { $regex: safe(type), $options: "i" },
+      semesterType: { $regex: safe(semesterType), $options: "i" },
+      regulation: { $regex: safe(regulation), $options: "i" },
+      department: { $regex: safe(department), $options: "i" },
     });
 
-    // Default sections
     const defaultSections = [
       { sectionName: "Section A", staff: null },
       { sectionName: "Section B", staff: null },
       { sectionName: "Section C", staff: null },
     ];
 
-    // 2. Format subjects safely
     const subjects = allocation
-      ? allocation.subjects.map((sub) => ({
-          id: sub._id,
-          subject: sub.subject,
-          sections:
-            sub.sections && sub.sections.length > 0
-              ? sub.sections.map((sec) => ({
-                  sectionName: sec.sectionName,
-                  staff:
-                    sec.staff &&
-                    sec.staff.name &&
-                    sec.staff.name.trim() !== ""
-                      ? { name: sec.staff.name }
-                      : null,
-                }))
-              : defaultSections,
-        }))
+      ? allocation.subjects.map((sub) => {
+          const mergedSections = defaultSections.map((def) => {
+            const dbSection = sub.sections?.find(
+              (s) => s.sectionName === def.sectionName
+            );
+
+            return {
+              sectionName: def.sectionName,
+              staff: dbSection?.staff?.name
+                ? { name: dbSection.staff.name }
+                : null,
+            };
+          });
+
+          return {
+            id: sub._id,
+            subject: sub.subject,
+            sections: mergedSections,
+          };
+        })
       : [];
 
-    // 3. Fetch faculty list
     const facultyRaw = await Faculty.find({
-      department: new RegExp(`^${department}$`, "i"),
+      department: { $regex: safe(department), $options: "i" },
     }).select("firstName lastName email designation role");
 
     const facultyList = facultyRaw.map((f) => ({
@@ -156,7 +159,6 @@ export const getHodDashboardData = async (req, res) => {
       role: f.role,
     }));
 
-    // 4. Final combined response
     res.json({
       subjects,
       faculty: facultyList,
@@ -166,6 +168,9 @@ export const getHodDashboardData = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 // ✔ POST → Assign staff
 // ✔ PUT → Update staff
