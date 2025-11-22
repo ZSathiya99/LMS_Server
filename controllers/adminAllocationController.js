@@ -217,7 +217,6 @@ export const assignStaffToSection = async (req, res) => {
       staffId,
     } = req.body;
 
-    // ✔ semesterType added back to required fields
     if (!department || !type || !semester || !semesterType || !regulation || !subjectId || !sectionName || !staffId) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -229,7 +228,6 @@ export const assignStaffToSection = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
-    // ✔ FIND allocation INCLUDING semesterType
     const allocation = await AdminAllocation.findOne({
       semester: Number(semester),
       semesterType: { $regex: safe(semesterType), $options: "i" },
@@ -261,7 +259,7 @@ export const assignStaffToSection = async (req, res) => {
       profileImg: staff.profileImg || null,
     };
 
-    // ⭐ Required for first-time DB save
+    // ⭐⭐ REQUIRED FOR FIRST TIME DB SAVE ⭐⭐
     subject.markModified("sections");
     allocation.markModified("subjects");
 
@@ -279,6 +277,7 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 

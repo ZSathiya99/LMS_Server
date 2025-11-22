@@ -1,51 +1,30 @@
 import mongoose from "mongoose";
 
-// const adminAllocationSchema = new mongoose.Schema({
-//   department: String,
-//   admin: {
-//     profileImg: String,
-//     firstName: String,
-//     lastName: String,
-//     salutation: String,
-//     email: String,
-//     department: String,
-//   },
-//   semester: Number,
-//   semesterType: String,
-//   subjectType: String,
-//   regulation: String,
-//   subjects: [
-//     {
-//       code: String,
-//       subject: String,
-//     },
-//   ],
-// });
 const AdminAllocationSchema = new mongoose.Schema({
-  department: String,
-  semester: Number,
-  semesterType: String,
-  subjectType: String,
-  regulation: String,
+  department: { type: String, required: true },
+  semester: { type: Number, required: true },
+  semesterType: { type: String, required: true },
+  subjectType: { type: String, required: true },
+  regulation: { type: String, required: true },
 
   subjects: [
     {
       code: String,
       subject: String,
+
       sections: [
         {
           sectionName: String,
           staff: {
+            id: String,          // ← matches assignStaffToSection
             name: String,
             email: String,
-            facultyId: String
+            profileImg: String   // ← your POST code includes this
           }
         }
       ]
     }
   ]
 });
-
-
 
 export default mongoose.model("AdminAllocation", AdminAllocationSchema);
