@@ -210,7 +210,6 @@ export const assignStaffToSection = async (req, res) => {
       staffId,
     } = req.body;
 
-    // 1. Validate
     if (
       !department ||
       !type ||
@@ -223,44 +222,38 @@ export const assignStaffToSection = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // 2. Find staff details
     const staff = await Faculty.findById(staffId).select(
       "firstName lastName email profileImg"
     );
     if (!staff) return res.status(404).json({ message: "Staff not found" });
 
-    // 3. Find matching allocation
+    const safe = (v) => (v ? v.toString().trim() : "");
+
     const allocation = await AdminAllocation.findOne({
-      subjectType: new RegExp(`^${type}$`, "i"),
-      semester,
-      regulation,
-      department,
+      semester: Number(semester),
+      subjectType: { $regex: safe(type), $options: "i" },
+      regulation: { $regex: safe(regulation.toString()), $options: "i" },
+      department: { $regex: safe(department), $options: "i" },
     });
 
     if (!allocation) {
       return res.status(404).json({ message: "Allocation not found" });
     }
 
-    // 4. Find subject
     const subject = allocation.subjects.id(subjectId);
     if (!subject) {
       return res.status(404).json({ message: "Subject not found" });
     }
 
-    // 5. Find OR Create section
     let section = subject.sections.find(
       (sec) => sec.sectionName === sectionName
     );
 
     if (!section) {
-      section = {
-        sectionName,
-        staff: null,
-      };
+      section = { sectionName, staff: null };
       subject.sections.push(section);
     }
 
-    // 6. Assign staff object
     section.staff = {
       id: staffId,
       name: `${staff.firstName} ${staff.lastName}`,
@@ -268,7 +261,6 @@ export const assignStaffToSection = async (req, res) => {
       profileImg: staff.profileImg || null,
     };
 
-    // 7. Save database
     await allocation.save();
 
     res.json({
@@ -277,11 +269,13 @@ export const assignStaffToSection = async (req, res) => {
       sectionName,
       staff: section.staff,
     });
+
   } catch (error) {
     console.error("Assign staff error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 export const updateStaffForSection = async (req, res) => {
   try {
