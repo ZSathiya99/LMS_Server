@@ -36,21 +36,12 @@ export const allocateSubjects = async (req, res) => {
       subjects,
     } = req.body;
 
-    if (
-      !department ||
-      !subjectType ||
-      !semester ||
-      !semesterType ||
-      !regulation ||
-      !subjects ||
-      !Array.isArray(subjects)
-    ) {
+    if (!department || !subjectType || !semester || !semesterType || !regulation || !subjects) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
-    // 🔍 Match existing allocation
     let allocation = await AdminAllocation.findOne({
       semester: Number(semester),
       semesterType: { $regex: safe(semesterType), $options: "i" },
@@ -59,41 +50,53 @@ export const allocateSubjects = async (req, res) => {
       department: { $regex: safe(department), $options: "i" },
     });
 
-    // UPDATE existing allocation
     if (allocation) {
-      allocation.subjects.push(...subjects);
-      allocation.markModified("subjects");
+      // ⭐ FILTER OUT DUPLICATES
+      subjects.forEach((sub) => {
+        const exists = allocation.subjects.some(
+          (s) => s.code === sub.code
+        );
 
+        if (!exists) {
+          allocation.subjects.push({ ...sub, sections: [] });
+        }
+      });
+
+      allocation.markModified("subjects");
       await allocation.save();
 
       return res.json({
-        message: "Subjects updated successfully",
+        message: "Subjects updated",
         allocation,
       });
     }
 
-    // CREATE new allocation
-    const newAllocation = new AdminAllocation({
+    // NEW ALLOCATION
+    allocation = new AdminAllocation({
       department,
       subjectType,
       semester,
       semesterType,
       regulation,
-      subjects,
+      subjects: subjects.map((s) => ({
+        ...s,
+        sections: []
+      })),
     });
 
-    await newAllocation.save();
+    await allocation.save();
 
     res.status(201).json({
       message: "Subjects allocated successfully",
-      allocation: newAllocation,
+      allocation,
     });
 
   } catch (error) {
-    console.error("AllocateSubjects error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 
 export const getHodDashboardSubjects = async (req, res) => {
@@ -135,15 +138,15 @@ export const getHodDashboardSubjects = async (req, res) => {
 // ⭐ ADD THIS FUNCTION
 export const getHodDashboardData = async (req, res) => {
   try {
-    const { type, semester, regulation, department, semesterType } = req.query;
+    const { subjectType, semester, semesterType, regulation, department } = req.query;
 
-    const safe = (val) => (val ? val.toString().trim() : "");
+    const safe = (v) => (v ? v.toString().trim() : "");
 
     const allocation = await AdminAllocation.findOne({
       semester: Number(semester),
-      subjectType: { $regex: safe(type), $options: "i" },
       semesterType: { $regex: safe(semesterType), $options: "i" },
-      regulation: { $regex: safe(regulation.toString()), $options: "i" },
+      subjectType: { $regex: safe(subjectType), $options: "i" },
+      regulation: { $regex: safe(regulation), $options: "i" },
       department: { $regex: safe(department), $options: "i" },
     });
 
@@ -155,24 +158,19 @@ export const getHodDashboardData = async (req, res) => {
 
     const subjects = allocation
       ? allocation.subjects.map((sub) => {
-          const mergedSections = defaultSections.map((def) => {
-            const dbSection = sub.sections?.find(
-              (s) => s.sectionName === def.sectionName
-            );
-
+          const sections = defaultSections.map((d) => {
+            const match = sub.sections?.find((s) => s.sectionName === d.sectionName);
             return {
-              sectionName: def.sectionName,
-              staff: dbSection?.staff?.name
-                ? { name: dbSection.staff.name }
-                : null,
+              sectionName: d.sectionName,
+              staff: match?.staff || null,
             };
           });
 
           return {
             id: sub._id,
-            semesterType: allocation.semesterType, // ⭐ ADDED HERE
             subject: sub.subject,
-            sections: mergedSections,
+            semesterType: allocation.semesterType,
+            sections,
           };
         })
       : [];
@@ -181,7 +179,7 @@ export const getHodDashboardData = async (req, res) => {
       department: { $regex: safe(department), $options: "i" },
     }).select("firstName lastName email designation role");
 
-    const facultyList = facultyRaw.map((f) => ({
+    const faculty = facultyRaw.map((f) => ({
       id: f._id,
       name: `${f.firstName} ${f.lastName}`,
       email: f.email,
@@ -189,15 +187,13 @@ export const getHodDashboardData = async (req, res) => {
       role: f.role,
     }));
 
-    res.json({
-      subjects,
-      faculty: facultyList,
-    });
+    res.json({ subjects, faculty });
+
   } catch (error) {
-    console.error("Dashboard error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ✔ POST → Assign staff
 // ✔ PUT → Update staff
@@ -219,6 +215,7 @@ export const assignStaffToSection = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // find staff
     const staff = await Faculty.findById(staffId).select(
       "firstName lastName email profileImg"
     );
@@ -226,26 +223,30 @@ export const assignStaffToSection = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
+    // find allocation
     const allocation = await AdminAllocation.findOne({
       semester: Number(semester),
       semesterType: { $regex: safe(semesterType), $options: "i" },
-      subjectType: { $regex: safe(subjectType), $options: "i" },  // ✔ FIXED HERE
+      subjectType: { $regex: safe(subjectType), $options: "i" },
       regulation: { $regex: safe(regulation.toString()), $options: "i" },
       department: { $regex: safe(department), $options: "i" },
     });
 
     if (!allocation) return res.status(404).json({ message: "Allocation not found" });
 
+    // find subject
     const subject = allocation.subjects.id(subjectId);
     if (!subject) return res.status(404).json({ message: "Subject not found" });
 
+    // find or create section
     let section = subject.sections.find((sec) => sec.sectionName === sectionName);
 
     if (!section) {
-      section = { sectionName, staff: null };
+      section = { sectionName, staff: {} };
       subject.sections.push(section);
     }
 
+    // assign staff
     section.staff = {
       id: staffId,
       name: `${staff.firstName} ${staff.lastName}`,
@@ -253,15 +254,14 @@ export const assignStaffToSection = async (req, res) => {
       profileImg: staff.profileImg || null,
     };
 
-    subject.markModified("sections");
+    // 💥 THIS IS THE MAGIC FIX 💥
     allocation.markModified("subjects");
-    allocation.markModified(`subjects.${allocation.subjects.indexOf(subject)}.sections`);
 
+    // save
     await allocation.save();
 
     res.json({
       message: "Staff assigned successfully",
-      subjectId,
       sectionName,
       staff: section.staff,
     });
@@ -271,6 +271,9 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 export const updateStaffForSection = async (req, res) => {
   try {

@@ -12,17 +12,30 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Create allocation
+/* ---------------------------------------------------
+   SUBJECT ALLOCATION
+--------------------------------------------------- */
+
+// Create base allocation (optional)
 router.post("/", verifyToken, addAdminAllocation);
 
-// Save subjects with sections
-router.post("/subjects", verifyToken, allocateSubjects);
+// Allocate subjects
+router.post("/allocate-subjects", verifyToken, allocateSubjects);
 
-router.get("/dashboard", verifyToken, getHodDashboardData);
+// Get HOD dashboard
+router.get("/hod-dashboard", verifyToken, getHodDashboardData);
 
+/* ---------------------------------------------------
+   STAFF ASSIGNMENT
+--------------------------------------------------- */
 
-router.post("/assign-staff", verifyToken, assignStaffToSection); // create
-router.put("/assign-staff/:sectionId", verifyToken, updateStaffForSection); // update by id
-router.delete("/assign-staff/:sectionId", verifyToken, deleteStaffFromSection); // remove by id
+// Assign staff to section
+router.post("/assign-staff", verifyToken, assignStaffToSection);
+
+// Update staff in section
+router.put("/assign-staff/:sectionId", verifyToken, updateStaffForSection);
+
+// Delete staff from section
+router.delete("/assign-staff/:sectionId", verifyToken, deleteStaffFromSection);
 
 export default router;
