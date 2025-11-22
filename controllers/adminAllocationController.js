@@ -206,17 +206,18 @@ export const assignStaffToSection = async (req, res) => {
       department,
       type,
       semester,
-      semesterType,
       regulation,
       subjectId,
       sectionName,
       staffId,
     } = req.body;
 
-    if (!department || !type || !semester || !regulation || !subjectId || !sectionName || !staffId || !semesterType) {
+    // ❌ Remove semesterType from required fields
+    if (!department || !type || !semester || !regulation || !subjectId || !sectionName || !staffId) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // Fetch staff
     const staff = await Faculty.findById(staffId).select(
       "firstName lastName email profileImg"
     );
@@ -224,10 +225,9 @@ export const assignStaffToSection = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
-    // ⭐ FIXED MATCHING (added semesterType)
+    // ⭐ Find allocation WITHOUT semesterType
     const allocation = await AdminAllocation.findOne({
       semester: Number(semester),
-      semesterType: { $regex: safe(semesterType), $options: "i" },
       subjectType: { $regex: safe(type), $options: "i" },
       regulation: { $regex: safe(regulation.toString()), $options: "i" },
       department: { $regex: safe(department), $options: "i" },
@@ -237,17 +237,20 @@ export const assignStaffToSection = async (req, res) => {
       return res.status(404).json({ message: "Allocation not found" });
     }
 
+    // Find subject
     const subject = allocation.subjects.id(subjectId);
     if (!subject) {
       return res.status(404).json({ message: "Subject not found" });
     }
 
+    // Find or create section
     let section = subject.sections.find((sec) => sec.sectionName === sectionName);
     if (!section) {
       section = { sectionName, staff: null };
       subject.sections.push(section);
     }
 
+    // Assign staff
     section.staff = {
       id: staffId,
       name: `${staff.firstName} ${staff.lastName}`,
@@ -255,6 +258,7 @@ export const assignStaffToSection = async (req, res) => {
       profileImg: staff.profileImg || null,
     };
 
+    // ⭐ Needed for first-time DB save
     subject.markModified("sections");
     allocation.markModified("subjects");
 
@@ -272,6 +276,7 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
