@@ -236,22 +236,18 @@ export const assignStaffToSection = async (req, res) => {
       department: { $regex: safe(department), $options: "i" },
     });
 
-    if (!allocation) {
-      return res.status(404).json({ message: "Allocation not found" });
-    }
+    if (!allocation) return res.status(404).json({ message: "Allocation not found" });
 
     const subject = allocation.subjects.id(subjectId);
-    if (!subject) {
-      return res.status(404).json({ message: "Subject not found" });
-    }
+    if (!subject) return res.status(404).json({ message: "Subject not found" });
 
     let section = subject.sections.find((sec) => sec.sectionName === sectionName);
+
     if (!section) {
       section = { sectionName, staff: null };
       subject.sections.push(section);
     }
 
-    // Assign staff
     section.staff = {
       id: staffId,
       name: `${staff.firstName} ${staff.lastName}`,
@@ -259,9 +255,10 @@ export const assignStaffToSection = async (req, res) => {
       profileImg: staff.profileImg || null,
     };
 
-    // ⭐⭐ REQUIRED FOR FIRST TIME DB SAVE ⭐⭐
-    subject.markModified("sections");
-    allocation.markModified("subjects");
+    // ⭐⭐ SUPER IMPORTANT FIX ⭐⭐
+    subject.markModified("sections");                         // mark local
+    allocation.markModified("subjects");                      // mark full array
+    allocation.markModified(`subjects.${allocation.subjects.indexOf(subject)}.sections`);  // precise fix
 
     await allocation.save();
 
@@ -277,6 +274,7 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
