@@ -17,7 +17,7 @@ const SectionSchema = new mongoose.Schema(
     sectionName: String,
     staff: { type: StaffSchema, default: {} }
   },
-  { _id: false }
+  { _id: true }   // <-- IMPORTANT (GENERATE section _id)
 );
 
 // Subjects
