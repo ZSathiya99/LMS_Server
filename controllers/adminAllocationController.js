@@ -139,6 +139,7 @@ export const getHodDashboardData = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
+    // Find allocation for HOD dashboard
     const allocation = await AdminAllocation.findOne({
       department: { $regex: safe(department), $options: "i" },
       subjectType: { $regex: safe(subjectType), $options: "i" },
@@ -147,21 +148,25 @@ export const getHodDashboardData = async (req, res) => {
       regulation: { $regex: safe(regulation.toString()), $options: "i" },
     });
 
+    // Default section list
     const defaultSections = [
-      { sectionName: "Section A", staff: null },
-      { sectionName: "Section B", staff: null },
-      { sectionName: "Section C", staff: null },
+      { sectionName: "Section A" },
+      { sectionName: "Section B" },
+      { sectionName: "Section C" },
     ];
 
+    // Prepare subjects + merged sections
     const subjects = allocation
       ? allocation.subjects.map((sub) => {
           const mergedSections = defaultSections.map((def) => {
+            // find existing section (if already created)
             const existing = sub.sections.find(
               (s) => s.sectionName === def.sectionName
             );
 
             return {
               sectionName: def.sectionName,
+              sectionId: existing?._id || null, // ⭐ ADD SECTION ID HERE
               staff: existing?.staff || null,
             };
           });
@@ -176,6 +181,7 @@ export const getHodDashboardData = async (req, res) => {
         })
       : [];
 
+    // Faculty List
     const facultyRaw = await Faculty.find({
       department: { $regex: safe(department), $options: "i" },
     }).select("firstName lastName email designation role");
@@ -188,6 +194,7 @@ export const getHodDashboardData = async (req, res) => {
       role: f.role,
     }));
 
+    // Final response
     res.json({
       semesterType: allocation?.semesterType || null,
       subjects,
@@ -198,6 +205,7 @@ export const getHodDashboardData = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ✔ POST → Assign staff
 // ✔ PUT → Update staff
