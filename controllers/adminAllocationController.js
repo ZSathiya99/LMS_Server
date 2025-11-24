@@ -370,11 +370,12 @@ export const updateStaffForSection = async (req, res) => {
   }
 };
 
+
 export const deleteStaffFromSection = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
-    // Find the allocation
+    // Find allocation that contains section
     const allocation = await AdminAllocation.findOne({
       "subjects.sections._id": sectionId,
     });
@@ -383,31 +384,35 @@ export const deleteStaffFromSection = async (req, res) => {
       return res.status(404).json({ message: "Allocation not found" });
     }
 
-    // Find subject and section
+    // Find subject containing this section
     const subject = allocation.subjects.find((sub) =>
       sub.sections.some((sec) => sec._id.toString() === sectionId)
     );
-    const section = subject.sections.id(sectionId);
 
-    if (!section) {
-      return res.status(404).json({ message: "Section not found" });
+    if (!subject) {
+      return res.status(404).json({ message: "Subject not found" });
     }
 
-    // Remove staff object
-    section.staff = {};
+    // DELETE the section completely
+    subject.sections = subject.sections.filter(
+      (sec) => sec._id.toString() !== sectionId
+    );
 
     allocation.markModified("subjects");
     await allocation.save();
 
     return res.json({
-      message: "Staff removed successfully",
-      section,
+      message: "Section deleted successfully",
+      sections: subject.sections,   // will be [] if last one deleted
     });
+
   } catch (error) {
-    console.error("Delete Staff Error:", error);
+    console.error("Delete Section Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
 //DELETE SECTION 
 export const deleteSection = async (req, res) => {
   try {

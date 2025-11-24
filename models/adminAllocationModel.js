@@ -11,13 +11,13 @@ const StaffSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Sections
+// Sections (must have _id)
 const SectionSchema = new mongoose.Schema(
   {
     sectionName: String,
     staff: { type: StaffSchema, default: {} }
   },
-  { _id: true }   // <-- IMPORTANT (GENERATE section _id)
+  { _id: true }
 );
 
 // Subjects
