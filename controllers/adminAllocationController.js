@@ -50,38 +50,45 @@ export const allocateSubjects = async (req, res) => {
       regulation: { $regex: safe(regulation.toString()), $options: "i" },
     });
 
-    if (allocation) {
-      allocation.subjects.push(...subjects);
-      allocation.markModified("subjects");
-      await allocation.save();
-
-      return res.json({
-        message: "Subjects updated successfully",
-        allocation,
+    // Create new allocation
+    if (!allocation) {
+      allocation = new AdminAllocation({
+        department,
+        subjectType,
+        semester,
+        semesterType,
+        regulation,
+        subjects,
       });
+      await allocation.save();
+      return res.json({ message: "Subjects allocated successfully", allocation });
     }
 
-    allocation = new AdminAllocation({
-      department,
-      subjectType,
-      semester,
-      semesterType,
-      regulation,
-      subjects,
+    // Update existing without duplicates
+    subjects.forEach((newSub) => {
+      const existing = allocation.subjects.find(
+        (s) => s.code === newSub.code
+      );
+      if (!existing) {
+        allocation.subjects.push(newSub);
+      }
     });
 
+    allocation.markModified("subjects");
     await allocation.save();
 
-    return res.status(201).json({
-      message: "Subjects allocated successfully",
+    res.json({
+      message: "Subjects updated successfully",
       allocation,
     });
 
   } catch (error) {
-    console.error("Allocation Error:", error);
+    console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 
 
@@ -208,18 +215,23 @@ export const assignStaffToSection = async (req, res) => {
       staffId,
     } = req.body;
 
-    // Required fields check
-    if (!department || !subjectType || !semester || !semesterType || !regulation || !subjectId || !sectionName || !staffId) {
+    // console.log("BODY RECEIVED:", req.body);
+
+    // Validation
+    if (!department || !subjectType || !semester || !semesterType ||
+        !regulation || !subjectId || !sectionName || !staffId) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Fetch staff
-    const staff = await Faculty.findById(staffId).select("firstName lastName email profileImg");
+    // Fetch staff details
+    const staff = await Faculty.findById(staffId).select(
+      "firstName lastName email profileImg"
+    );
     if (!staff) return res.status(404).json({ message: "Staff not found" });
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
-    // Find allocation
+    // Find Allocation
     const allocation = await AdminAllocation.findOne({
       department: { $regex: safe(department), $options: "i" },
       subjectType: { $regex: safe(subjectType), $options: "i" },
@@ -236,32 +248,54 @@ export const assignStaffToSection = async (req, res) => {
     const subject = allocation.subjects.id(subjectId);
     if (!subject) return res.status(404).json({ message: "Subject not found" });
 
-    // Find or create section
+    // Find existing section
     let section = subject.sections.find((sec) => sec.sectionName === sectionName);
 
+    // -------------------------
+    // FIRST TIME → CREATE + ASSIGN STAFF
+    // -------------------------
     if (!section) {
-      section = { sectionName, staff: {} };
+      section = {
+        sectionName,
+        staff: {
+          id: staffId,
+          name: `${staff.firstName} ${staff.lastName}`,
+          email: staff.email,
+          profileImg: staff.profileImg || null
+        }
+      };
+
       subject.sections.push(section);
+
+      allocation.markModified("subjects");
+      await allocation.save();
+
+      return res.json({
+        message: "Section created and staff assigned successfully",
+        subjectId,
+        sectionName,
+        section
+      });
     }
 
-    // Assign staff
+    // -------------------------
+    // SECOND TIME → UPDATE STAFF
+    // -------------------------
     section.staff = {
       id: staffId,
       name: `${staff.firstName} ${staff.lastName}`,
       email: staff.email,
-      profileImg: staff.profileImg || null,
+      profileImg: staff.profileImg || null
     };
 
-    // Required Fix
     allocation.markModified("subjects");
-
     await allocation.save();
 
-    res.json({
-      message: "Staff assigned successfully",
+    return res.json({
+      message: "Staff updated successfully",
       subjectId,
       sectionName,
-      staff: section.staff,
+      staff: section.staff
     });
 
   } catch (error) {
@@ -269,6 +303,8 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 
 

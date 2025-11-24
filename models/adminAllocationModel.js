@@ -1,31 +1,39 @@
 import mongoose from "mongoose";
 
+// Staff sub-schema (no _id)
+const StaffSchema = new mongoose.Schema(
+  {
+    id: String,
+    name: String,
+    email: String,
+    profileImg: String,
+  },
+  { _id: false }
+);
+
+// Sections
+const SectionSchema = new mongoose.Schema(
+  {
+    sectionName: String,
+    staff: { type: StaffSchema, default: {} }
+  },
+  { _id: false }
+);
+
+// Subjects
+const SubjectSchema = new mongoose.Schema({
+  code: String,
+  subject: String,
+  sections: [SectionSchema]
+});
+
 const AdminAllocationSchema = new mongoose.Schema({
   department: String,
   semester: Number,
   semesterType: String,
   subjectType: String,
   regulation: String,
-
-  subjects: [
-    {
-      code: String,
-      subject: String,
-     sections: [
-  {
-    sectionName: { type: String, required: true },
-    staff: {
-      id: { type: String, default: null },
-      name: { type: String, default: null },
-      email: { type: String, default: null },
-      profileImg: { type: String, default: null }
-    }
-  }
-]
-
-    },
-  ],
+  subjects: [SubjectSchema]
 });
-
 
 export default mongoose.model("AdminAllocation", AdminAllocationSchema);

@@ -26,7 +26,8 @@ router.get("/hod-dashboard", verifyToken, getHodDashboardData);
 --------------------------------------------------- */
 
 // Assign staff to a section
-router.post("/assign-staff", verifyToken, assignStaffToSection);
+router.post("/admin-allocation", verifyToken, assignStaffToSection);
+
 
 // Update assigned staff
 router.put("/assign-staff/:sectionId", verifyToken, updateStaffForSection);
