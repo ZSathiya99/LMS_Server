@@ -36,7 +36,14 @@ export const allocateSubjects = async (req, res) => {
       subjects,
     } = req.body;
 
-    if (!department || !subjectType || !semester || !semesterType || !regulation || !subjects) {
+    if (
+      !department ||
+      !subjectType ||
+      !semester ||
+      !semesterType ||
+      !regulation ||
+      !subjects
+    ) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -61,14 +68,15 @@ export const allocateSubjects = async (req, res) => {
         subjects,
       });
       await allocation.save();
-      return res.json({ message: "Subjects allocated successfully", allocation });
+      return res.json({
+        message: "Subjects allocated successfully",
+        allocation,
+      });
     }
 
     // Update existing without duplicates
     subjects.forEach((newSub) => {
-      const existing = allocation.subjects.find(
-        (s) => s.code === newSub.code
-      );
+      const existing = allocation.subjects.find((s) => s.code === newSub.code);
       if (!existing) {
         allocation.subjects.push(newSub);
       }
@@ -81,19 +89,11 @@ export const allocateSubjects = async (req, res) => {
       message: "Subjects updated successfully",
       allocation,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
-
-
-
-
-
-
-
 
 export const getHodDashboardSubjects = async (req, res) => {
   try {
@@ -134,7 +134,8 @@ export const getHodDashboardSubjects = async (req, res) => {
 // ⭐ ADD THIS FUNCTION
 export const getHodDashboardData = async (req, res) => {
   try {
-    const { subjectType, semester, regulation, department, semesterType } = req.query;
+    const { subjectType, semester, regulation, department, semesterType } =
+      req.query;
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
@@ -155,7 +156,9 @@ export const getHodDashboardData = async (req, res) => {
     const subjects = allocation
       ? allocation.subjects.map((sub) => {
           const mergedSections = defaultSections.map((def) => {
-            const existing = sub.sections.find((s) => s.sectionName === def.sectionName);
+            const existing = sub.sections.find(
+              (s) => s.sectionName === def.sectionName
+            );
 
             return {
               sectionName: def.sectionName,
@@ -190,14 +193,11 @@ export const getHodDashboardData = async (req, res) => {
       subjects,
       faculty: facultyList,
     });
-
   } catch (error) {
     console.error("Dashboard Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // ✔ POST → Assign staff
 // ✔ PUT → Update staff
@@ -218,8 +218,16 @@ export const assignStaffToSection = async (req, res) => {
     // console.log("BODY RECEIVED:", req.body);
 
     // Validation
-    if (!department || !subjectType || !semester || !semesterType ||
-        !regulation || !subjectId || !sectionName || !staffId) {
+    if (
+      !department ||
+      !subjectType ||
+      !semester ||
+      !semesterType ||
+      !regulation ||
+      !subjectId ||
+      !sectionName ||
+      !staffId
+    ) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -249,7 +257,9 @@ export const assignStaffToSection = async (req, res) => {
     if (!subject) return res.status(404).json({ message: "Subject not found" });
 
     // Find existing section
-    let section = subject.sections.find((sec) => sec.sectionName === sectionName);
+    let section = subject.sections.find(
+      (sec) => sec.sectionName === sectionName
+    );
 
     // -------------------------
     // FIRST TIME → CREATE + ASSIGN STAFF
@@ -261,8 +271,8 @@ export const assignStaffToSection = async (req, res) => {
           id: staffId,
           name: `${staff.firstName} ${staff.lastName}`,
           email: staff.email,
-          profileImg: staff.profileImg || null
-        }
+          profileImg: staff.profileImg || null,
+        },
       };
 
       subject.sections.push(section);
@@ -274,7 +284,7 @@ export const assignStaffToSection = async (req, res) => {
         message: "Section created and staff assigned successfully",
         subjectId,
         sectionName,
-        section
+        section,
       });
     }
 
@@ -285,7 +295,7 @@ export const assignStaffToSection = async (req, res) => {
       id: staffId,
       name: `${staff.firstName} ${staff.lastName}`,
       email: staff.email,
-      profileImg: staff.profileImg || null
+      profileImg: staff.profileImg || null,
     };
 
     allocation.markModified("subjects");
@@ -295,23 +305,13 @@ export const assignStaffToSection = async (req, res) => {
       message: "Staff updated successfully",
       subjectId,
       sectionName,
-      staff: section.staff
+      staff: section.staff,
     });
-
   } catch (error) {
     console.error("Assign Staff Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
-
-
-
-
-
-
-
-
 
 export const updateStaffForSection = async (req, res) => {
   try {
@@ -322,12 +322,15 @@ export const updateStaffForSection = async (req, res) => {
       return res.status(400).json({ message: "staffId is required" });
     }
 
-    const staff = await Faculty.findById(staffId);
+    // Find staff details
+    const staff = await Faculty.findById(staffId).select(
+      "firstName lastName email profileImg"
+    );
     if (!staff) {
       return res.status(404).json({ message: "Staff not found" });
     }
 
-    // Find allocation containing this section
+    // Find allocation that contains this section
     const allocation = await AdminAllocation.findOne({
       "subjects.sections._id": sectionId,
     });
@@ -336,29 +339,77 @@ export const updateStaffForSection = async (req, res) => {
       return res.status(404).json({ message: "Allocation not found" });
     }
 
-    // Locate the section
+    // Find subject and section
     const subject = allocation.subjects.find((sub) =>
       sub.sections.some((sec) => sec._id.toString() === sectionId)
     );
-
     const section = subject.sections.id(sectionId);
 
-    // Update staff
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+
+    // Update staff details
     section.staff = {
-      facultyId: staff._id,
-      name: staff.firstName + " " + staff.lastName,
+      id: staffId,
+      name: `${staff.firstName} ${staff.lastName}`,
       email: staff.email,
+      profileImg: staff.profileImg || null,
     };
 
+    allocation.markModified("subjects");
     await allocation.save();
 
-    res.json({ message: "Staff updated successfully", section });
+    return res.json({
+      message: "Staff updated successfully",
+      section,
+    });
   } catch (error) {
+    console.error("Update Staff Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
 export const deleteStaffFromSection = async (req, res) => {
+  try {
+    const { sectionId } = req.params;
+
+    // Find the allocation
+    const allocation = await AdminAllocation.findOne({
+      "subjects.sections._id": sectionId,
+    });
+
+    if (!allocation) {
+      return res.status(404).json({ message: "Allocation not found" });
+    }
+
+    // Find subject and section
+    const subject = allocation.subjects.find((sub) =>
+      sub.sections.some((sec) => sec._id.toString() === sectionId)
+    );
+    const section = subject.sections.id(sectionId);
+
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+
+    // Remove staff object
+    section.staff = {};
+
+    allocation.markModified("subjects");
+    await allocation.save();
+
+    return res.json({
+      message: "Staff removed successfully",
+      section,
+    });
+  } catch (error) {
+    console.error("Delete Staff Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+//DELETE SECTION 
+export const deleteSection = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
@@ -370,23 +421,25 @@ export const deleteStaffFromSection = async (req, res) => {
       return res.status(404).json({ message: "Allocation not found" });
     }
 
-    // Locate subject & section
+    // Find subject
     const subject = allocation.subjects.find((sub) =>
       sub.sections.some((sec) => sec._id.toString() === sectionId)
     );
 
-    const section = subject.sections.id(sectionId);
+    // Remove section
+    subject.sections = subject.sections.filter(
+      (sec) => sec._id.toString() !== sectionId
+    );
 
-    // Remove staff
-    section.staff = null;
-
+    allocation.markModified("subjects");
     await allocation.save();
 
-    res.json({
-      message: "Staff removed successfully",
-      sectionId,
+    return res.json({
+      message: "Section deleted successfully",
     });
+
   } catch (error) {
+    console.error("Delete Section Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

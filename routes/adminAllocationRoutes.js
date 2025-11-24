@@ -4,7 +4,7 @@ import {
   getHodDashboardData,
   assignStaffToSection,
   updateStaffForSection,
-  deleteStaffFromSection
+  deleteStaffFromSection,deleteSection
 } from "../controllers/adminAllocationController.js";
 
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -29,10 +29,8 @@ router.get("/hod-dashboard", verifyToken, getHodDashboardData);
 router.post("/admin-allocation", verifyToken, assignStaffToSection);
 
 
-// Update assigned staff
-router.put("/assign-staff/:sectionId", verifyToken, updateStaffForSection);
-
-// Delete staff from a section
-router.delete("/assign-staff/:sectionId", verifyToken, deleteStaffFromSection);
+router.patch("/update-staff/:sectionId", verifyToken, updateStaffForSection);
+router.delete("/delete-staff/:sectionId", verifyToken, deleteStaffFromSection);
+router.delete("/delete-section/:sectionId", verifyToken, deleteSection);
 
 export default router;
