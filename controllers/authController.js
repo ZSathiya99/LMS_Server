@@ -4,6 +4,7 @@ import generateToken from "../utils/generateToken.js";
 import { sendMail } from "../utils/sendMail.js";
 import { renderTemplate } from "../utils/renderTemplate.js";
 import Faculty from "../models/Faculty.js";
+import Student from "../models/Student.js";
 
 // =======================================
 // REGISTER
@@ -40,7 +41,7 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user by email
+    // Find user
     const user = await User.findOne({ email });
     if (!user)
       return res.status(401).json({ message: "Invalid email or password" });
@@ -50,9 +51,46 @@ export const loginUser = async (req, res) => {
     if (!isMatch)
       return res.status(401).json({ message: "Invalid email or password" });
 
-    // Fetch faculty info (for designation + department)
-    const faculty = await Faculty.findOne({ email });
+    // Default response
+    let extraData = {};
 
+    // =====================================================
+    //  FACULTY LOGIN DETAILS
+    // =====================================================
+    if (user.role === "faculty" ||
+        user.role === "HOD" ||
+        user.role === "Dean" ||
+        user.role === "Professor" ||
+        user.role === "Assistant Professor" ||
+        user.role === "Associate Professor") 
+    {
+      const faculty = await Faculty.findOne({ email });
+
+      extraData = {
+        designation: faculty?.designation || "",
+        department: faculty?.department || "",
+        employeeId: faculty?.employeeId || "",
+      };
+    }
+
+    // =====================================================
+    //  STUDENT LOGIN DETAILS
+    // =====================================================
+    if (user.role === "student") {
+      const student = await Student.findOne({ email });
+
+      extraData = {
+        registerNumber: student?.registerNumber || "",
+        rollNumber: student?.rollNumber || "",
+        department: student?.department || "",
+        year: student?.year || "",
+        section: student?.section || "",
+      };
+    }
+
+    // =====================================================
+    //   FINAL RESPONSE
+    // =====================================================
     res.json({
       message: "Login successful",
       token: generateToken(user._id, user.role),
@@ -61,10 +99,7 @@ export const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-
-        // ⭐ NEW FIELDS
-        designation: faculty?.designation || "",
-        department: faculty?.department || "",
+        ...extraData,   // dynamic data added here
       },
     });
 
@@ -72,7 +107,6 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 // =======================================
 // FORGOT PASSWORD (Send OTP)
 // =======================================

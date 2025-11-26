@@ -7,7 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import facultyRoutes from "./routes/facultyRoutes.js";
 import subjectRoutes from "./routes/subjectRoutes.js";
 import adminAllocationRoutes from "./routes/adminAllocationRoutes.js";
-
+import studentRoutes from "./routes/studentRoutes.js";  
 dotenv.config();
 
 // Connect DB
@@ -18,7 +18,7 @@ const app = express();
 // CORS
 app.use(cors({
   origin: ["http://localhost:5173"],
-  methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   credentials: true,
 }));
 
@@ -28,9 +28,9 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/faculty", facultyRoutes);
 app.use("/api/subjects", subjectRoutes);
-
-// ⭐ ONLY THIS ONE LINE FOR ALLOCATION ⭐
 app.use("/api/admin-allocation", adminAllocationRoutes);
+
+app.use("/api/students", studentRoutes);
 
 // HOME
 app.get("/", (req, res) => {

@@ -5,13 +5,26 @@ import bcrypt from "bcryptjs";
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
+
     email: { type: String, required: true, unique: true },
+
     password: { type: String, required: true },
+
     role: {
       type: String,
-      enum: ["faculty", "HOD", "Dean", "Professor", "Assistant Professor", "Associate Professor", "admin"],
-      default: "faculty",
+      enum: [
+        "admin",
+        "faculty",
+        "student",
+        "HOD",
+        "Dean",
+        "Professor",
+        "Assistant Professor",
+        "Associate Professor"
+      ],
+      default: "faculty",   // or set to "student" for student creation
     },
+
     resetOtp: String,
     resetOtpExpiry: Date,
   },
