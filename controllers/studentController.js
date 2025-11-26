@@ -18,7 +18,7 @@ const getNorm = (normalized, ...variants) => {
 };
 
 // ======================================================
-// ✅ ADD STUDENT (Manual Add)
+// ✅ ADD STUDENT (Manual Add) with AUTO SECTION ASSIGN
 // ======================================================
 export const addStudent = async (req, res) => {
   try {
@@ -35,30 +35,82 @@ export const addStudent = async (req, res) => {
       password,
     } = req.body;
 
+    // -----------------------------
+    // 1️⃣ VALIDATION
+    // -----------------------------
     if (!email || !registerNumber || !firstName || !lastName) {
       return res.status(400).json({
-        message: "email, registerNumber, firstName, lastName required",
+        message: "email, registerNumber, firstName, lastName are required",
       });
     }
 
+    // -----------------------------
+    // 2️⃣ PREVENT DUPLICATES
+    // -----------------------------
+    const exists = await Student.findOne({
+      $or: [{ email }, { registerNumber }]
+    });
+
+    if (exists) {
+      return res.status(400).json({
+        message: "Student with this Email or Register Number already exists",
+      });
+    }
+
+    // -----------------------------
+    // 3️⃣ AUTO ROLL NUMBER (if empty)
+    // -----------------------------
+    let finalRollNumber = rollNumber;
+    if (!finalRollNumber || finalRollNumber.trim() === "") {
+      const countDept = await Student.countDocuments({ department });
+      finalRollNumber = `R${countDept + 1}`;
+    }
+
+    // -----------------------------
+    // 4️⃣ AUTO SECTION (only if empty)
+    // -----------------------------
+    let finalSection = section;
+    if (!finalSection || finalSection.trim() === "") {
+      const sectionLetters = ["A","B","C","D","E","F","G","H","I","J"];
+      const countDept = await Student.countDocuments({ department });
+      const secIndex = Math.floor(countDept / 10); // 10 per section
+      finalSection = sectionLetters[secIndex] || "Z";
+    }
+
+    // -----------------------------
+    // 5️⃣ AUTO MOBILE NUMBER (if empty)
+    // -----------------------------
+    let finalMobile = mobileNumber;
+    if (!finalMobile || finalMobile.trim() === "") {
+      finalMobile = "9" + Math.floor(100000000 + Math.random() * 900000000);
+    }
+
+    // -----------------------------
+    // 6️⃣ HASH PASSWORD
+    // -----------------------------
     const hashedPassword = await bcrypt.hash(password || "123456", 10);
 
+    // -----------------------------
+    // 7️⃣ CREATE STUDENT DOCUMENT
+    // -----------------------------
     const newStudent = new Student({
       firstName,
       lastName,
       registerNumber,
-      rollNumber,
+      rollNumber: finalRollNumber,
       department,
       year,
-      section,
+      section: finalSection,
       email,
-      mobileNumber,
+      mobileNumber: finalMobile,
       password: hashedPassword,
     });
 
     await newStudent.save();
 
-    // Create parallel USER login
+    // -----------------------------
+    // 8️⃣ CREATE USER LOGIN
+    // -----------------------------
     await User.create({
       name: `${firstName} ${lastName}`,
       email,
@@ -66,14 +118,21 @@ export const addStudent = async (req, res) => {
       role: "student",
     });
 
+    // -----------------------------
+    // 9️⃣ RESPONSE
+    // -----------------------------
     res.status(201).json({
-      message: "Student added",
+      message: "Student added successfully",
       student: newStudent,
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 // ======================================================
 // ✅ UPDATE STUDENT
@@ -134,21 +193,28 @@ export const deleteStudent = async (req, res) => {
 // ======================================================
 export const uploadMultipleStudents = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file)
+      return res.status(400).json({ message: "No file uploaded" });
 
     const workbook = xlsx.readFile(req.file.path);
     const sheet = workbook.SheetNames[0];
     const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheet]);
 
-    if (!rows.length) return res.status(400).json({ message: "Empty Excel" });
+    if (!rows.length)
+      return res.status(400).json({ message: "Empty Excel" });
+
+    let inserted = 0;
+    let updated = 0;
 
     let students = [];
-    let usersCreated = 0;
-    let usersUpdated = 0;
 
+    // -----------------------------------------------------
+    // 1️⃣ READ EACH EXCEL ROW AND BUILD NORMALIZED STUDENT OBJECT
+    // -----------------------------------------------------
     for (let i = 0; i < rows.length; i++) {
       const raw = rows[i];
 
+      // Normalize keys
       const normalized = {};
       Object.keys(raw).forEach((k) => {
         normalized[normalizeKey(k)] = raw[k];
@@ -159,28 +225,44 @@ export const uploadMultipleStudents = async (req, res) => {
         `student${Date.now()}${i}@college.edu`;
 
       const registerNumber =
-        getNorm(normalized, "regno", "registernumber") || `REG${1000 + i}`;
-
-      const rollNumber = getNorm(normalized, "rollno", "roll") || "";
+        getNorm(normalized, "regno", "registernumber") ||
+        `REG${1000 + i}`;
 
       const firstName =
         getNorm(normalized, "firstname", "first") ||
-        getNorm(normalized, "name")?.split(" ")[0] ||
         `User${i}`;
 
       const lastName =
         getNorm(normalized, "lastname", "last") ||
-        getNorm(normalized, "name")?.split(" ").slice(1).join(" ") ||
         `Auto${i}`;
 
       const department = getNorm(normalized, "department", "dept") || "";
       const year = getNorm(normalized, "year") || "";
-      const section = getNorm(normalized, "section") || "";
 
-      const rawPwd = String(getNorm(normalized, "password") || "123456");
+      // ⭐ SECTION (Excel may give " ", "  ", undefined etc.)
+      let section = (getNorm(normalized, "section") || "").trim();
 
+      // ⭐ AUTO ROLL NUMBER
+      let rollNumber = getNorm(normalized, "rollno", "roll") || "";
+      if (!rollNumber.trim()) {
+        const deptCount = await Student.countDocuments({ department });
+        rollNumber = `R${deptCount + 1}`;
+      }
+
+      // ⭐ AUTO MOBILE NUMBER
+      let mobileNumber = getNorm(normalized, "phone", "mobile") || "";
+      if (!mobileNumber.trim()) {
+        mobileNumber =
+          "9" + Math.floor(100000000 + Math.random() * 900000000);
+      }
+
+      // ⭐ PASSWORD
+      const rawPwd = String(
+        getNorm(normalized, "password") || "123456"
+      );
       const hashedPassword = await bcrypt.hash(rawPwd, 10);
 
+      // STORE TEMP OBJECT
       students.push({
         firstName,
         lastName,
@@ -190,53 +272,142 @@ export const uploadMultipleStudents = async (req, res) => {
         year,
         section,
         email,
-        mobileNumber: getNorm(normalized, "phone", "mobile") || "",
-        password: hashedPassword,
+        mobileNumber,
+        rawPwd,
+        hashedPassword,
+      });
+    }
+
+    // -----------------------------------------------------
+    // 2️⃣ SORT STUDENTS ALPHABETICALLY
+    // -----------------------------------------------------
+    students.sort((a, b) => a.firstName.localeCompare(b.firstName));
+
+    // -----------------------------------------------------
+    // 3️⃣ AUTO ASSIGN SECTION ONLY FOR EMPTY VALUES (FIXED)
+    // -----------------------------------------------------
+    const sectionLetters = ["A","B","C","D","E","F","G","H"];
+
+    const deptGroups = {};
+
+    // GROUP BY DEPARTMENT
+    students.forEach((stu) => {
+      if (!deptGroups[stu.department]) deptGroups[stu.department] = [];
+      deptGroups[stu.department].push(stu);
+    });
+
+    // FIXED AUTO-SECTION ALLOCATION
+    for (const dept in deptGroups) {
+      let count = 0;
+
+      deptGroups[dept].forEach((stu) => {
+        if (!stu.section || stu.section.trim() === "") {
+          const secIndex = Math.floor(count / 10);
+          stu.section = sectionLetters[secIndex] || "Z";
+          count++;
+        }
+      });
+    }
+
+    // -----------------------------------------------------
+    // 4️⃣ INSERT / UPDATE STUDENTS + USER SYNC
+    // -----------------------------------------------------
+    for (const stu of students) {
+      const {
+        firstName, lastName, registerNumber, rollNumber,
+        department, year, section, email, mobileNumber,
+        rawPwd, hashedPassword
+      } = stu;
+
+      // CHECK IF STUDENT EXISTS
+      let existingStudent = await Student.findOne({
+        $or: [{ registerNumber }, { email }],
       });
 
-      // USER LOGIN SYNC
-      const existing = await User.findOne({ email });
+      if (existingStudent) {
+        // ⭐ UPDATE STUDENT
+        await Student.updateOne(
+          { _id: existingStudent._id },
+          {
+            $set: {
+              firstName,
+              lastName,
+              department,
+              year,
+              section: section || existingStudent.section,
+              rollNumber,
+              mobileNumber,
+            },
+          }
+        );
 
-      if (existing) {
-        existing.name = `${firstName} ${lastName}`;
-        existing.role = "student";
-        existing.password = rawPwd;
-        await existing.save();
-        usersUpdated++;
+        // ⭐ UPDATE USER FOR LOGIN
+        let existingUser = await User.findOne({ email });
+
+        if (existingUser) {
+          existingUser.name = `${firstName} ${lastName}`;
+          existingUser.password = rawPwd;
+          existingUser.role = "student";
+          await existingUser.save();
+        }
+
+        updated++;
       } else {
-        await User.create({
-          name: `${firstName} ${lastName}`,
+        // ⭐ INSERT NEW STUDENT
+        await Student.create({
+          firstName,
+          lastName,
+          registerNumber,
+          rollNumber,
+          department,
+          year,
+          section,
           email,
-          password: rawPwd,
-          role: "student",
+          mobileNumber,
+          password: hashedPassword,
         });
-        usersCreated++;
+
+        // ⭐ USER: CREATE OR UPDATE
+        let existingUser = await User.findOne({ email });
+
+        if (!existingUser) {
+          await User.create({
+            name: `${firstName} ${lastName}`,
+            email,
+            password: rawPwd,
+            role: "student",
+          });
+        } else {
+          existingUser.name = `${firstName} ${lastName}`;
+          existingUser.password = rawPwd;
+          existingUser.role = "student";
+          await existingUser.save();
+        }
+
+        inserted++;
       }
     }
 
-    // Insert students
-    let insertedCount = 0;
-    try {
-      const result = await Student.insertMany(students, { ordered: false });
-      insertedCount = result.length;
-    } catch (err) {
-      const regNos = students.map((s) => s.registerNumber);
-      insertedCount = await Student.countDocuments({
-        registerNumber: { $in: regNos },
-      });
-    }
-
+    // -----------------------------------------------------
+    // 5️⃣ DONE
+    // -----------------------------------------------------
     res.status(200).json({
-      message: "Students uploaded",
-      insertedStudents: insertedCount,
-      usersCreated,
-      usersUpdated,
+      message: "Upload Completed Successfully (Insert + Update + Auto Section)",
+      insertedStudents: inserted,
+      updatedStudents: updated,
     });
+
   } catch (error) {
     console.log("Upload error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+
+
+
 
 // ======================================================
 // ✅ GET ALL STUDENTS
