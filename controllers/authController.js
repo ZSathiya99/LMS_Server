@@ -45,11 +45,14 @@ export const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user)
       return res.status(401).json({ message: "Invalid email or password" });
+console.log("Entered Password:", password);
+console.log("Stored Hash:", user.password);
 
     // Check password
-    const isMatch = await user.matchPassword(password);
+     const isMatch = await bcrypt.compare(password, user.password);
+    
     if (!isMatch)
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Invalid email or password1" });
 
     // Default response
     let extraData = {};
@@ -91,17 +94,29 @@ export const loginUser = async (req, res) => {
     // =====================================================
     //   FINAL RESPONSE
     // =====================================================
-    res.json({
-      message: "Login successful",
-      token: generateToken(user._id, user.role),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        ...extraData,   // dynamic data added here
-      },
-    });
+// Extract department correctly based on role
+let tokenDepartment = extraData.department || ""; 
+
+res.json({
+  message: "Login successful",
+  token: generateToken(
+    user._id,
+    user.role,
+    user.name,
+    user.email,
+    tokenDepartment     // ⭐ send correct department
+  ),
+  user: {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    department: tokenDepartment,   // ⭐ correct department
+    ...extraData,
+  },
+});
+
+
 
   } catch (error) {
     res.status(500).json({ message: error.message });

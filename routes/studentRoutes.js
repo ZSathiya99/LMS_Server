@@ -7,7 +7,8 @@ import {
   getAllStudents,
   getStudentDepartmentWise,
   getStudentsByDeptPie,
-  getStudentDashboard
+  getStudentDashboard,
+  getStudentsFiltered,getDepartmentSummary
 } from "../controllers/studentController.js";
 
 import { uploadExcel } from "../middleware/upload.js";
@@ -42,5 +43,12 @@ router.get("/department-wise/:department", verifyToken, getStudentsByDeptPie);
 
 // 🏠 Dashboard (Total + Year-wise)
 router.get("/dashboard", verifyToken, getStudentDashboard);
+// GET STUDENTS BY Department + Year + Section
+
+router.get("/filter",verifyToken, getStudentsFiltered);
+
+router.get("/department-summary",verifyToken, getDepartmentSummary);
+
+
 
 export default router;

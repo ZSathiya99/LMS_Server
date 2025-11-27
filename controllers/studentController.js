@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 
 // ----------------------------------------------
-// Normalizer Helpers
+// Helpers
 // ----------------------------------------------
 const normalizeKey = (key) =>
   key.toString().trim().toLowerCase().replace(/\s+/g, "").replace(/[_-]/g, "");
@@ -18,7 +18,7 @@ const getNorm = (normalized, ...variants) => {
 };
 
 // ======================================================
-// ✅ ADD STUDENT (Manual Add) with AUTO SECTION ASSIGN
+// ✅ MANUAL ADD STUDENT (With 5-per-section rule)
 // ======================================================
 export const addStudent = async (req, res) => {
   try {
@@ -35,20 +35,15 @@ export const addStudent = async (req, res) => {
       password,
     } = req.body;
 
-    // -----------------------------
-    // 1️⃣ VALIDATION
-    // -----------------------------
     if (!email || !registerNumber || !firstName || !lastName) {
       return res.status(400).json({
-        message: "email, registerNumber, firstName, lastName are required",
+        message: "email, registerNumber, firstName, lastName required",
       });
     }
 
-    // -----------------------------
-    // 2️⃣ PREVENT DUPLICATES
-    // -----------------------------
+    // Prevent duplicates
     const exists = await Student.findOne({
-      $or: [{ email }, { registerNumber }]
+      $or: [{ email }, { registerNumber }],
     });
 
     if (exists) {
@@ -57,42 +52,40 @@ export const addStudent = async (req, res) => {
       });
     }
 
-    // -----------------------------
-    // 3️⃣ AUTO ROLL NUMBER (if empty)
-    // -----------------------------
+    // Auto roll number
     let finalRollNumber = rollNumber;
     if (!finalRollNumber || finalRollNumber.trim() === "") {
-      const countDept = await Student.countDocuments({ department });
-      finalRollNumber = `R${countDept + 1}`;
+      const count = await Student.countDocuments({ department, year });
+      finalRollNumber = `R${count + 1}`;
     }
 
-    // -----------------------------
-    // 4️⃣ AUTO SECTION (only if empty)
-    // -----------------------------
-    let finalSection = section;
-    if (!finalSection || finalSection.trim() === "") {
-      const sectionLetters = ["A","B","C","D","E","F","G","H","I","J"];
-      const countDept = await Student.countDocuments({ department });
-      const secIndex = Math.floor(countDept / 10); // 10 per section
-      finalSection = sectionLetters[secIndex] || "Z";
+    // Auto Section using SAME rule as Excel upload
+    let existing = await Student.find({ department, year }).sort({ firstName: 1 });
+    let position = existing.length; // this new student position in queue
+
+    const fullSections = Math.floor(position / 5);
+    const remainder = position % 5;
+
+    let finalSection = "";
+
+    if (position < 5) {
+      finalSection = "A";
+    } else if (remainder === 0) {
+      finalSection = ["A", "B", "C", "D", "E", "F"][fullSections] || "";
+    } else {
+      // leftover 1–4 → UNALLOCATED
+      finalSection = "";
     }
 
-    // -----------------------------
-    // 5️⃣ AUTO MOBILE NUMBER (if empty)
-    // -----------------------------
+    // Auto mobile
     let finalMobile = mobileNumber;
     if (!finalMobile || finalMobile.trim() === "") {
-      finalMobile = "9" + Math.floor(100000000 + Math.random() * 900000000);
+      finalMobile =
+        "9" + Math.floor(100000000 + Math.random() * 900000000);
     }
 
-    // -----------------------------
-    // 6️⃣ HASH PASSWORD
-    // -----------------------------
     const hashedPassword = await bcrypt.hash(password || "123456", 10);
 
-    // -----------------------------
-    // 7️⃣ CREATE STUDENT DOCUMENT
-    // -----------------------------
     const newStudent = new Student({
       firstName,
       lastName,
@@ -108,9 +101,6 @@ export const addStudent = async (req, res) => {
 
     await newStudent.save();
 
-    // -----------------------------
-    // 8️⃣ CREATE USER LOGIN
-    // -----------------------------
     await User.create({
       name: `${firstName} ${lastName}`,
       email,
@@ -118,9 +108,6 @@ export const addStudent = async (req, res) => {
       role: "student",
     });
 
-    // -----------------------------
-    // 9️⃣ RESPONSE
-    // -----------------------------
     res.status(201).json({
       message: "Student added successfully",
       student: newStudent,
@@ -130,9 +117,6 @@ export const addStudent = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
-
 
 // ======================================================
 // ✅ UPDATE STUDENT
@@ -153,14 +137,11 @@ export const updateStudent = async (req, res) => {
 
     if (!student) return res.status(404).json({ message: "Student not found" });
 
-    // Sync user
     const user = await User.findOne({ email: student.email });
     if (user) {
       if (req.body.password) user.password = req.body.password;
       if (req.body.firstName || req.body.lastName)
-        user.name = `${req.body.firstName || student.firstName} ${
-          req.body.lastName || student.lastName
-        }`;
+        user.name = `${req.body.firstName || student.firstName} ${req.body.lastName || student.lastName}`;
       await user.save();
     }
 
@@ -176,7 +157,6 @@ export const updateStudent = async (req, res) => {
 export const deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
-
     const student = await Student.findByIdAndDelete(id);
     if (!student) return res.status(404).json({ message: "Student not found" });
 
@@ -193,29 +173,26 @@ export const deleteStudent = async (req, res) => {
 // ======================================================
 export const uploadMultipleStudents = async (req, res) => {
   try {
-    if (!req.file)
-      return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
     const workbook = xlsx.readFile(req.file.path);
     const sheet = workbook.SheetNames[0];
     const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheet]);
 
-    if (!rows.length)
-      return res.status(400).json({ message: "Empty Excel" });
+    if (!rows.length) return res.status(400).json({ message: "Empty Excel" });
 
     let inserted = 0;
     let updated = 0;
-
     let students = [];
 
-    // -----------------------------------------------------
-    // 1️⃣ READ EACH EXCEL ROW AND BUILD NORMALIZED STUDENT OBJECT
-    // -----------------------------------------------------
+    // --------------------------------------------------------
+    // 1️⃣ READ + NORMALIZE EXCEL ROWS
+    // --------------------------------------------------------
+
     for (let i = 0; i < rows.length; i++) {
       const raw = rows[i];
-
-      // Normalize keys
       const normalized = {};
+
       Object.keys(raw).forEach((k) => {
         normalized[normalizeKey(k)] = raw[k];
       });
@@ -225,44 +202,33 @@ export const uploadMultipleStudents = async (req, res) => {
         `student${Date.now()}${i}@college.edu`;
 
       const registerNumber =
-        getNorm(normalized, "regno", "registernumber") ||
-        `REG${1000 + i}`;
+        getNorm(normalized, "regno", "registernumber") || `REG${1000 + i}`;
 
       const firstName =
-        getNorm(normalized, "firstname", "first") ||
-        `User${i}`;
+        getNorm(normalized, "firstname", "first") || `User${i}`;
 
       const lastName =
-        getNorm(normalized, "lastname", "last") ||
-        `Auto${i}`;
+        getNorm(normalized, "lastname", "last") || `Auto${i}`;
 
       const department = getNorm(normalized, "department", "dept") || "";
       const year = getNorm(normalized, "year") || "";
 
-      // ⭐ SECTION (Excel may give " ", "  ", undefined etc.)
       let section = (getNorm(normalized, "section") || "").trim();
 
-      // ⭐ AUTO ROLL NUMBER
       let rollNumber = getNorm(normalized, "rollno", "roll") || "";
       if (!rollNumber.trim()) {
-        const deptCount = await Student.countDocuments({ department });
+        const deptCount = await Student.countDocuments({ department, year });
         rollNumber = `R${deptCount + 1}`;
       }
 
-      // ⭐ AUTO MOBILE NUMBER
       let mobileNumber = getNorm(normalized, "phone", "mobile") || "";
       if (!mobileNumber.trim()) {
-        mobileNumber =
-          "9" + Math.floor(100000000 + Math.random() * 900000000);
+        mobileNumber = "9" + Math.floor(100000000 + Math.random() * 900000000);
       }
 
-      // ⭐ PASSWORD
-      const rawPwd = String(
-        getNorm(normalized, "password") || "123456"
-      );
+      const rawPwd = String(getNorm(normalized, "password") || "123456");
       const hashedPassword = await bcrypt.hash(rawPwd, 10);
 
-      // STORE TEMP OBJECT
       students.push({
         firstName,
         lastName,
@@ -278,40 +244,70 @@ export const uploadMultipleStudents = async (req, res) => {
       });
     }
 
-    // -----------------------------------------------------
-    // 2️⃣ SORT STUDENTS ALPHABETICALLY
-    // -----------------------------------------------------
+    // --------------------------------------------------------
+    // 2️⃣ SORT FOR CLEAN ORDER
+    // --------------------------------------------------------
     students.sort((a, b) => a.firstName.localeCompare(b.firstName));
 
-    // -----------------------------------------------------
-    // 3️⃣ AUTO ASSIGN SECTION ONLY FOR EMPTY VALUES (FIXED)
-    // -----------------------------------------------------
-    const sectionLetters = ["A","B","C","D","E","F","G","H"];
-
-    const deptGroups = {};
-
-    // GROUP BY DEPARTMENT
-    students.forEach((stu) => {
-      if (!deptGroups[stu.department]) deptGroups[stu.department] = [];
-      deptGroups[stu.department].push(stu);
-    });
-
-    // FIXED AUTO-SECTION ALLOCATION
-    for (const dept in deptGroups) {
-      let count = 0;
-
-      deptGroups[dept].forEach((stu) => {
-        if (!stu.section || stu.section.trim() === "") {
-          const secIndex = Math.floor(count / 10);
-          stu.section = sectionLetters[secIndex] || "Z";
-          count++;
-        }
-      });
+    // --------------------------------------------------------
+    // 3️⃣ GROUP BY DEPARTMENT + YEAR
+    // --------------------------------------------------------
+    const group = {};
+    for (const stu of students) {
+      const key = `${stu.department}-${stu.year}`;
+      if (!group[key]) group[key] = [];
+      group[key].push(stu);
     }
 
-    // -----------------------------------------------------
-    // 4️⃣ INSERT / UPDATE STUDENTS + USER SYNC
-    // -----------------------------------------------------
+    // --------------------------------------------------------
+    // 4️⃣ CORRECT SECTION ALLOCATION (THE MOST IMPORTANT PART)
+    // --------------------------------------------------------
+    const sectionLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+    for (const key in group) {
+      const [dept, yr] = key.split("-");
+
+      // Get already existing students for this dept + year
+      const existing = await Student.find({ department: dept, year: yr })
+        .sort({ firstName: 1 });
+
+      const existingCount = existing.length;
+
+      // Students uploaded for this group
+      let list = group[key];
+
+      // only those without a manual section
+      let autoList = list.filter(
+        (stu) => !stu.section || stu.section.trim() === ""
+      );
+
+      // keep order consistent
+      autoList.sort((a, b) => a.firstName.localeCompare(b.firstName));
+
+      const totalStudents = existingCount + autoList.length;
+
+      for (let i = 0; i < autoList.length; i++) {
+        const globalIndex = existingCount + i;   // index including existing records
+        const sectionIndex = Math.floor(globalIndex / 5); // block of 5
+
+        // If this is the last block AND it's incomplete -> unallocated
+        const isLastBlock = sectionIndex === Math.floor((totalStudents - 1) / 5);
+        const blockStart = sectionIndex * 5;
+        const isIncompleteLastSection =
+          isLastBlock && (totalStudents - blockStart < 5);
+
+        if (isIncompleteLastSection) {
+          autoList[i].section = ""; // unallocated leftover
+        } else {
+          autoList[i].section = sectionLetters[sectionIndex] || "";
+        }
+      }
+    }
+
+    // --------------------------------------------------------
+    // 5️⃣ INSERT OR UPDATE STUDENTS IN DB
+    // --------------------------------------------------------
+
     for (const stu of students) {
       const {
         firstName, lastName, registerNumber, rollNumber,
@@ -319,13 +315,12 @@ export const uploadMultipleStudents = async (req, res) => {
         rawPwd, hashedPassword
       } = stu;
 
-      // CHECK IF STUDENT EXISTS
       let existingStudent = await Student.findOne({
         $or: [{ registerNumber }, { email }],
       });
 
       if (existingStudent) {
-        // ⭐ UPDATE STUDENT
+        // UPDATE
         await Student.updateOne(
           { _id: existingStudent._id },
           {
@@ -334,16 +329,14 @@ export const uploadMultipleStudents = async (req, res) => {
               lastName,
               department,
               year,
-              section: section || existingStudent.section,
+              section,
               rollNumber,
               mobileNumber,
             },
           }
         );
 
-        // ⭐ UPDATE USER FOR LOGIN
         let existingUser = await User.findOne({ email });
-
         if (existingUser) {
           existingUser.name = `${firstName} ${lastName}`;
           existingUser.password = rawPwd;
@@ -353,7 +346,7 @@ export const uploadMultipleStudents = async (req, res) => {
 
         updated++;
       } else {
-        // ⭐ INSERT NEW STUDENT
+        // INSERT
         await Student.create({
           firstName,
           lastName,
@@ -367,7 +360,6 @@ export const uploadMultipleStudents = async (req, res) => {
           password: hashedPassword,
         });
 
-        // ⭐ USER: CREATE OR UPDATE
         let existingUser = await User.findOne({ email });
 
         if (!existingUser) {
@@ -377,22 +369,17 @@ export const uploadMultipleStudents = async (req, res) => {
             password: rawPwd,
             role: "student",
           });
-        } else {
-          existingUser.name = `${firstName} ${lastName}`;
-          existingUser.password = rawPwd;
-          existingUser.role = "student";
-          await existingUser.save();
         }
 
         inserted++;
       }
     }
 
-    // -----------------------------------------------------
-    // 5️⃣ DONE
-    // -----------------------------------------------------
+    // --------------------------------------------------------
+    // 6️⃣ RESPONSE
+    // --------------------------------------------------------
     res.status(200).json({
-      message: "Upload Completed Successfully (Insert + Update + Auto Section)",
+      message: "Upload Completed (Sections allocated correctly)",
       insertedStudents: inserted,
       updatedStudents: updated,
     });
@@ -404,13 +391,8 @@ export const uploadMultipleStudents = async (req, res) => {
 };
 
 
-
-
-
-
-
 // ======================================================
-// ✅ GET ALL STUDENTS
+// GET ALL STUDENTS
 // ======================================================
 export const getAllStudents = async (req, res) => {
   try {
@@ -422,7 +404,7 @@ export const getAllStudents = async (req, res) => {
 };
 
 // ======================================================
-// ✅ DEPARTMENT-WISE COUNT
+// DEPARTMENT-WISE COUNT
 // ======================================================
 export const getStudentDepartmentWise = async (req, res) => {
   try {
@@ -435,62 +417,42 @@ export const getStudentDepartmentWise = async (req, res) => {
   }
 };
 
-
 // ======================================================
-// GET /api/students/department-wise/:department
+// YEAR-WISE COUNT (DEPT PIE)
+// ======================================================
 export const getStudentsByDeptPie = async (req, res) => {
   try {
     const { department } = req.params;
 
     const data = await Student.aggregate([
-      { 
-        $match: { 
-          department: { $regex: new RegExp(`^${department}$`, "i") }
-        } 
-      },
-      {
-        $group: {
-          _id: "$year",
-          count: { $sum: 1 }
-        }
-      }
+      { $match: { department } },
+      { $group: { _id: "$year", count: { $sum: 1 } } },
     ]);
 
-    let pie = {
-      firstYear: data.find(d => d._id == "First Year")?.count || 0,
-      secondYear: data.find(d => d._id == "Second Year")?.count || 0,
-      thirdYear: data.find(d => d._id == "Third Year")?.count || 0,
-      fourthYear: data.find(d => d._id == "Fourth Year")?.count || 0,
-    };
-
-    res.json(pie);
+    res.json({
+      firstYear: data.find(d => d._id === "First Year")?.count || 0,
+      secondYear: data.find(d => d._id === "Second Year")?.count || 0,
+      thirdYear: data.find(d => d._id === "Third Year")?.count || 0,
+      fourthYear: data.find(d => d._id === "Fourth Year")?.count || 0,
+    });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
 // ======================================================
-// ✅ DASHBOARD STATS
+// DASHBOARD STATS
 // ======================================================
-// GET /api/students/dashboard
 export const getStudentDashboard = async (req, res) => {
   try {
-    // total count
     const totalStudents = await Student.countDocuments();
 
-    // year-wise count
     const yearwise = await Student.aggregate([
-      {
-        $group: {
-          _id: "$year",
-          count: { $sum: 1 }
-        }
-      }
+      { $group: { _id: "$year", count: { $sum: 1 } } }
     ]);
 
-    const result = {
+    res.json({
       totalStudents,
       yearWise: {
         firstYear: yearwise.find(y => y._id === "First Year")?.count || 0,
@@ -498,12 +460,107 @@ export const getStudentDashboard = async (req, res) => {
         thirdYear: yearwise.find(y => y._id === "Third Year")?.count || 0,
         fourthYear: yearwise.find(y => y._id === "Fourth Year")?.count || 0,
       }
-    };
-
-    res.json(result);
+    });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// ======================================================
+// FILTER STUDENTS (Dept + Year + Section)
+// ======================================================
+export const getStudentsFiltered = async (req, res) => {
+  try {
+    const { department, year, section } = req.query;
+
+    const filter = {};
+
+    if (department) filter.department = department;
+    if (year) filter.year = year;
+
+    if (section && section !== "Unallocated") {
+      filter.section = section;
+    }
+
+    if (section === "Unallocated") {
+      filter.$or = [{ section: "" }, { section: null }];
+    }
+
+    let students = await Student.find(filter).sort({ firstName: 1 });
+
+    // Convert empty section → Unallocated
+    students = students.map((s) => ({
+      ...s._doc,
+      section: s.section && s.section.trim() !== "" ? s.section : "Unallocated",
+    }));
+
+    res.json({
+      total: students.length,
+      students,
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+// ======================================================
+// ✅ HOD DASHBOARD (Dynamic Department from Token)
+// ======================================================
+export const getDepartmentSummary = async (req, res) => {
+  try {
+    const hodDept = req.user.department;   // department from token
+
+    if (!hodDept) {
+      return res.status(400).json({ message: "HOD Department missing in token" });
+    }
+
+    // 1️⃣ All students of this HOD department
+    const students = await Student.find({ department: hodDept })
+      .sort({ year: 1, section: 1, firstName: 1 });
+
+    // 2️⃣ Group data
+    const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
+
+    const response = {
+      department: hodDept,
+      totalStudents: students.length,
+      years: {}  // fill below
+    };
+
+    for (const year of years) {
+      const yrStudents = students.filter(s => s.year === year);
+
+      if (yrStudents.length === 0) {
+        response.years[year] = {
+          total: 0,
+          sections: {},
+          unallocated: 0,
+        };
+        continue;
+      }
+
+      const sections = {};
+
+      yrStudents.forEach(s => {
+        const sec = s.section && s.section.trim() !== "" ? s.section : "Unallocated";
+        if (!sections[sec]) sections[sec] = [];
+        sections[sec].push(s);
+      });
+
+      response.years[year] = {
+        total: yrStudents.length,
+        sections: Object.keys(sections).map(sec => ({
+          section: sec,
+          count: sections[sec].length
+        })),
+        unallocated: sections["Unallocated"]?.length || 0,
+      };
+    }
+
+    res.json(response);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
