@@ -509,58 +509,69 @@ export const getStudentsFiltered = async (req, res) => {
 // ======================================================
 export const getDepartmentSummary = async (req, res) => {
   try {
-    const hodDept = req.user.department;   // department from token
+    const hodDept = req.user.department; // from token
 
     if (!hodDept) {
       return res.status(400).json({ message: "HOD Department missing in token" });
     }
 
-    // 1️⃣ All students of this HOD department
+    // 1️⃣ Get all students in this HOD's department
     const students = await Student.find({ department: hodDept })
       .sort({ year: 1, section: 1, firstName: 1 });
 
-    // 2️⃣ Group data
-    const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
+    const yearsList = [
+      "First Year",
+      "Second Year",
+      "Third Year",
+      "Fourth Year",
+    ];
 
-    const response = {
+    const summary = {
       department: hodDept,
       totalStudents: students.length,
-      years: {}  // fill below
+      years: []   // <-- ARRAY OUTPUT
     };
 
-    for (const year of years) {
-      const yrStudents = students.filter(s => s.year === year);
+    // 2️⃣ Build year-wise array
+    for (const year of yearsList) {
+      const yearStudents = students.filter(s => s.year === year);
 
-      if (yrStudents.length === 0) {
-        response.years[year] = {
+      if (yearStudents.length === 0) {
+        summary.years.push({
+          year,
           total: 0,
-          sections: {},
-          unallocated: 0,
-        };
+          sections: []   // empty
+        });
         continue;
       }
 
-      const sections = {};
+      // group by section
+      const sectionMap = {};
 
-      yrStudents.forEach(s => {
+      yearStudents.forEach(s => {
         const sec = s.section && s.section.trim() !== "" ? s.section : "Unallocated";
-        if (!sections[sec]) sections[sec] = [];
-        sections[sec].push(s);
+
+        if (!sectionMap[sec]) sectionMap[sec] = 0;
+        sectionMap[sec]++;
       });
 
-      response.years[year] = {
-        total: yrStudents.length,
-        sections: Object.keys(sections).map(sec => ({
-          section: sec,
-          count: sections[sec].length
-        })),
-        unallocated: sections["Unallocated"]?.length || 0,
-      };
+      // convert section map → array
+      const sectionArray = Object.keys(sectionMap).map(sec => ({
+        section: sec,
+        count: sectionMap[sec],
+      }));
+
+      summary.years.push({
+        year,
+        total: yearStudents.length,
+        sections: sectionArray
+      });
     }
 
-    res.json(response);
+    res.json(summary);
 
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
