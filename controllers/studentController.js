@@ -509,13 +509,13 @@ export const getStudentsFiltered = async (req, res) => {
 // ======================================================
 export const getDepartmentSummary = async (req, res) => {
   try {
-    const hodDept = req.user.department; // from token
+    const hodDept = req.user.department;
 
     if (!hodDept) {
       return res.status(400).json({ message: "HOD Department missing in token" });
     }
 
-    // 1️⃣ Get all students in this HOD's department
+    // Fetch all students of this department
     const students = await Student.find({ department: hodDept })
       .sort({ year: 1, section: 1, firstName: 1 });
 
@@ -529,49 +529,55 @@ export const getDepartmentSummary = async (req, res) => {
     const summary = {
       department: hodDept,
       totalStudents: students.length,
-      years: []   // <-- ARRAY OUTPUT
+      years: [],
     };
 
-    // 2️⃣ Build year-wise array
+    // Section ordering rule
+    const sectionOrder = ["A", "B", "C", "D", "E", "F", "Unallocated"];
+
     for (const year of yearsList) {
-      const yearStudents = students.filter(s => s.year === year);
+      const yearStudents = students.filter((s) => s.year === year);
 
       if (yearStudents.length === 0) {
         summary.years.push({
           year,
           total: 0,
-          sections: []   // empty
+          sections: [],
         });
         continue;
       }
 
-      // group by section
+      // Group by section
       const sectionMap = {};
 
-      yearStudents.forEach(s => {
+      yearStudents.forEach((s) => {
         const sec = s.section && s.section.trim() !== "" ? s.section : "Unallocated";
 
-        if (!sectionMap[sec]) sectionMap[sec] = 0;
-        sectionMap[sec]++;
+        if (!sectionMap[sec]) sectionMap[sec] = [];
+        sectionMap[sec].push(s);
       });
 
-      // convert section map → array
-      const sectionArray = Object.keys(sectionMap).map(sec => ({
-        section: sec,
-        count: sectionMap[sec],
-      }));
+      // Sort sections in correct order
+      const sortedSections = sectionOrder
+        .filter((sec) => sectionMap[sec]) // remove empty
+        .map((sec) => ({
+          section: sec,
+          count: sectionMap[sec].length,
+          students: sectionMap[sec],
+        }));
 
       summary.years.push({
         year,
         total: yearStudents.length,
-        sections: sectionArray
+        sections: sortedSections,
       });
     }
 
     res.json(summary);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
