@@ -89,6 +89,45 @@ export const getSubjectsByDepartment = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+//update
+// ✏️ UPDATE Subject
+export const updateSubject = async (req, res) => {
+  try {
+    const { id } = req.params; // subject ID
+    const updatedData = req.body; // code, subject
+
+    const updatedSubject = await Subject.findByIdAndUpdate(id, updatedData, {
+      new: true,
+    });
+
+    if (!updatedSubject) {
+      return res.status(404).json({ message: "Subject not found" });
+    }
+
+    res.status(200).json({
+      message: "Subject updated successfully",
+      subject: updatedSubject,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+// ❌ DELETE Subject
+export const deleteSubject = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await Subject.findByIdAndDelete(id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Subject not found" });
+    }
+
+    res.status(200).json({ message: "Subject deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
 // ✅ New function (for POST)
