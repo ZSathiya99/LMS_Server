@@ -509,7 +509,7 @@ export const getStudentsFiltered = async (req, res) => {
 // ======================================================
 export const getDepartmentSummary = async (req, res) => {
   try {
-    const hodDept = req.user.department;
+    const hodDept = req.user.department; // department from token
 
     if (!hodDept) {
       return res.status(400).json({ message: "HOD Department missing in token" });
@@ -532,7 +532,7 @@ export const getDepartmentSummary = async (req, res) => {
       years: [],
     };
 
-    // Section ordering rule
+    // ALWAYS SHOW THIS ORDER:
     const sectionOrder = ["A", "B", "C", "D", "E", "F", "Unallocated"];
 
     for (const year of yearsList) {
@@ -551,19 +551,21 @@ export const getDepartmentSummary = async (req, res) => {
       const sectionMap = {};
 
       yearStudents.forEach((s) => {
-        const sec = s.section && s.section.trim() !== "" ? s.section : "Unallocated";
+        const sec = s.section && s.section.trim() !== "" 
+          ? s.section 
+          : "Unallocated";
 
         if (!sectionMap[sec]) sectionMap[sec] = [];
         sectionMap[sec].push(s);
       });
 
-      // Sort sections in correct order
+      // Sorting into A,B,C...Unallocated
       const sortedSections = sectionOrder
-        .filter((sec) => sectionMap[sec]) // remove empty
+        .filter((sec) => sectionMap[sec]) // sections that exist
         .map((sec) => ({
           section: sec,
           count: sectionMap[sec].length,
-          students: sectionMap[sec],
+          students: sectionMap[sec], // FULL student list
         }));
 
       summary.years.push({
@@ -574,10 +576,48 @@ export const getDepartmentSummary = async (req, res) => {
     }
 
     res.json(summary);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const swapStudentSection = async (req, res) => {
+  try {
+    const { studentIds, newSection } = req.body;
+
+    if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ message: "No students selected" });
+    }
+
+    if (!newSection) {
+      return res.status(400).json({ message: "New section is required" });
+    }
+
+    // 1️⃣ Ensure students exist
+    const students = await Student.find({ _id: { $in: studentIds } });
+
+    if (students.length === 0) {
+      return res.status(404).json({ message: "No valid students found" });
+    }
+
+    // 2️⃣ UPDATE — without checking section limits
+    await Student.updateMany(
+      { _id: { $in: studentIds } },
+      { $set: { section: newSection } }
+    );
+
+    res.json({
+      message: `Successfully moved ${students.length} students to section ${newSection}`,
+      moved: students.length,
+      section: newSection
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 
 

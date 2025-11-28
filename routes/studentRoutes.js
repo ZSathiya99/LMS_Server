@@ -8,7 +8,7 @@ import {
   getStudentDepartmentWise,
   getStudentsByDeptPie,
   getStudentDashboard,
-  getStudentsFiltered,getDepartmentSummary
+  getStudentsFiltered,getDepartmentSummary,swapStudentSection
 } from "../controllers/studentController.js";
 
 import { uploadExcel } from "../middleware/upload.js";
@@ -48,6 +48,9 @@ router.get("/dashboard", verifyToken, getStudentDashboard);
 router.get("/filter",verifyToken, getStudentsFiltered);
 
 router.get("/department-summary",verifyToken, getDepartmentSummary);
+
+router.post("/swap-section", verifyToken, swapStudentSection);
+
 
 
 
