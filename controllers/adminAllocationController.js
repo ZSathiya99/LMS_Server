@@ -25,6 +25,8 @@ export const addAdminAllocation = async (req, res) => {
 };
 
 // ✅ POST /api/adminAllocation/subjects
+
+
 export const allocateSubjects = async (req, res) => {
   try {
     const {
@@ -36,64 +38,101 @@ export const allocateSubjects = async (req, res) => {
       subjects,
     } = req.body;
 
+    // ✅ Validation
     if (
       !department ||
       !subjectType ||
       !semester ||
       !semesterType ||
       !regulation ||
-      !subjects
+      !Array.isArray(subjects) ||
+      subjects.length === 0
     ) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({
+        message: "All fields are required and subjects must be an array",
+      });
     }
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
+    // ✅ Find existing allocation
     let allocation = await AdminAllocation.findOne({
       department: { $regex: safe(department), $options: "i" },
       subjectType: { $regex: safe(subjectType), $options: "i" },
       semester: Number(semester),
       semesterType: { $regex: safe(semesterType), $options: "i" },
-      regulation: { $regex: safe(regulation.toString()), $options: "i" },
+      regulation: { $regex: safe(regulation), $options: "i" },
     });
 
-    // Create new allocation
+    // 🔹 Clean subjects (ignore frontend _id)
+    const cleanSubjects = subjects.map((s) => ({
+      code: s.code,
+      subject: s.subject,
+      credits: s.credits,
+    }));
+
+    /* ======================================================
+       🆕 CREATE NEW ALLOCATION
+    ====================================================== */
     if (!allocation) {
       allocation = new AdminAllocation({
         department,
         subjectType,
-        semester,
+        semester: Number(semester),
         semesterType,
         regulation,
-        subjects,
+        subjects: cleanSubjects.map((s) => ({
+          ...s,
+          sections: [],
+        })),
       });
+
       await allocation.save();
-      return res.json({
+
+      return res.status(201).json({
         message: "Subjects allocated successfully",
         allocation,
       });
     }
 
-    // Update existing without duplicates
-    subjects.forEach((newSub) => {
-      const existing = allocation.subjects.find((s) => s.code === newSub.code);
-      if (!existing) {
-        allocation.subjects.push(newSub);
+    /* ======================================================
+       🔄 UPDATE EXISTING ALLOCATION (SAFE MERGE)
+    ====================================================== */
+    cleanSubjects.forEach((newSub) => {
+      const existing = allocation.subjects.find(
+        (s) => s.code === newSub.code
+      );
+
+      if (existing) {
+        // ✅ Update subject details only
+        existing.subject = newSub.subject;
+        existing.credits = newSub.credits;
+      } else {
+        // ✅ Add new subject
+        allocation.subjects.push({
+          code: newSub.code,
+          subject: newSub.subject,
+          credits: newSub.credits,
+          sections: [],
+        });
       }
     });
 
     allocation.markModified("subjects");
     await allocation.save();
 
-    res.json({
+    return res.status(200).json({
       message: "Subjects updated successfully",
       allocation,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
+    console.error("Allocate Subjects Error:", error);
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
+
 
 // GET /api/admin-allocation/subjects
 export const getAllocatedSubjects = async (req, res) => {
