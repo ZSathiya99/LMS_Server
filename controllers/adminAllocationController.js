@@ -94,6 +94,7 @@ export const allocateSubjects = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 // GET /api/admin-allocation/subjects
 export const getAllocatedSubjects = async (req, res) => {
   try {
@@ -105,6 +106,7 @@ export const getAllocatedSubjects = async (req, res) => {
       regulation,
     } = req.query;
 
+    // Validation
     if (
       !department ||
       !subjectType ||
@@ -124,24 +126,34 @@ export const getAllocatedSubjects = async (req, res) => {
       subjectType: { $regex: safe(subjectType), $options: "i" },
       semester: Number(semester),
       semesterType: { $regex: safe(semesterType), $options: "i" },
-      regulation: { $regex: safe(regulation.toString()), $options: "i" },
+      regulation: { $regex: safe(regulation), $options: "i" },
     });
 
+    // ✅ IMPORTANT FIX: Do NOT return 404
     if (!allocation) {
-      return res.status(404).json({
-        message: "No allocation found",
+      return res.status(200).json({
+        message: "No subjects allocated yet",
+        allocation: {
+          department,
+          subjectType,
+          semester: Number(semester),
+          semesterType,
+          regulation,
+          subjects: [],
+        },
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Allocated subjects fetched successfully",
       allocation,
     });
   } catch (error) {
     console.error("Get Allocated Subjects Error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 export const getHodDashboardSubjects = async (req, res) => {
