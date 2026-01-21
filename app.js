@@ -7,7 +7,11 @@ import authRoutes from "./routes/authRoutes.js";
 import facultyRoutes from "./routes/facultyRoutes.js";
 import subjectRoutes from "./routes/subjectRoutes.js";
 import adminAllocationRoutes from "./routes/adminAllocationRoutes.js";
-import studentRoutes from "./routes/studentRoutes.js";  
+import studentRoutes from "./routes/studentRoutes.js"; 
+import staffRoutes from "./routes/staffRoutes.js"; 
+import subjectPlanningRoutes from "./routes/subjectPlanningRoutes.js";
+import attendanceRoutes from "./routes/attendanceRoutes.js";
+
 dotenv.config();
 
 // Connect DB
@@ -24,13 +28,15 @@ app.use(cors({
 
 app.use(express.json());
 
-// ROUTES
+// ROUTES ✅
 app.use("/api/auth", authRoutes);
 app.use("/api/faculty", facultyRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/admin-allocation", adminAllocationRoutes);
-
 app.use("/api/students", studentRoutes);
+app.use("/api", staffRoutes);
+app.use("/api", subjectPlanningRoutes);
+app.use("/api", attendanceRoutes); // ✅ attendance here
 
 // HOME
 app.get("/", (req, res) => {

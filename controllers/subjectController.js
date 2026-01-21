@@ -7,6 +7,8 @@ import AdminAllocation from "../models/adminAllocationModel.js";
 
 
 
+
+
 // Existing function (for GET)
 export const getDepartmentSubjects = async (req, res) => {
   try {
@@ -103,7 +105,7 @@ export const updateSubject = async (req, res) => {
     if (!updatedSubject) {
       return res.status(404).json({ message: "Subject not found" });
     }
-
+    
     res.status(200).json({
       message: "Subject updated successfully",
       subject: updatedSubject,
