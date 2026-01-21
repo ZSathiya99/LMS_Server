@@ -27,7 +27,9 @@ router.get("/fix-user", async (req, res) => {
     //CSE
     "arunraj88@college.edu",
     //admin
-    "sathiyavijaya1999@gmail.com"
+    "sathiyavijaya1999@gmail.com",
+    //staff
+    "nishapatel0@college.edu"
   ];
 
   const users = await User.find({ email: { $in: emails } });
