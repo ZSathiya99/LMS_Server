@@ -1,47 +1,89 @@
 // models/Faculty.js
 import mongoose from "mongoose";
 
-const FacultySchema = new mongoose.Schema({
-  salutation: String,
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  gender: String,
-  dateOfBirth: Date,
+const FacultySchema = new mongoose.Schema(
+  {
+    salutation: String,
 
-  email: { type: String, required: true, unique: true },
-  mobileNumber: { type: String, required: true },
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-  password: { type: String, required: true }, // hashed
+    lastName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-  qualification: String,
-  workType: String,
-  employeeId: { type: String, required: true, unique: true },
-  joiningDate: Date,
-  jobTitle: String,
-  designation: String,
-  reportingManager: String,
-  department: String,
-  noticePeriod: String,
+    gender: String,
+    dateOfBirth: Date,
 
-  role: {
-    type: String,
-    enum: [
-      "faculty",
-      "HOD",
-      "Dean",
-      "Professor",
-      "Assistant Professor",
-      "Associate Professor",
-      "admin"
-    ],
-    default: "faculty",
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+
+    mobileNumber: {
+      type: String,
+      required: true,
+    },
+
+    password: {
+      type: String,
+      required: true, // hashed
+    },
+
+    employeeId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    department: {
+      type: String,
+      required: true,
+    },
+
+    // 🔐 ROLE-BASED ACCESS (Single Source of Truth)
+    role: {
+      type: String,
+      enum: [
+        "faculty",
+        "HOD",
+        "Dean",
+        "Professor",
+        "Assistant Professor",
+        "Associate Professor",
+        "admin",
+      ],
+      default: "faculty",
+    },
+
+    // ✅ Only filled if role === "HOD"
+    hodDepartment: {
+      type: String,
+      default: null,
+    },
+
+    designation: String,
+    qualification: String,
+    workType: String,
+    joiningDate: Date,
+    reportingManager: String,
+    noticePeriod: String,
+
+    documents: {
+      markSheet: String,
+      experienceCertificate: String,
+      degreeCertificate: String,
+    },
   },
-
-  documents: {
-    markSheet: String,
-    experienceCertificate: String,
-    degreeCertificate: String,
-  },
-}, { timestamps: true });
+  { timestamps: true }
+);
 
 export default mongoose.model("Faculty", FacultySchema);

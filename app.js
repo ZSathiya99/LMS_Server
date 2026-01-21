@@ -11,6 +11,9 @@ import studentRoutes from "./routes/studentRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js"; 
 import subjectPlanningRoutes from "./routes/subjectPlanningRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
+import hodRoutes from "./routes/hodRoutes.js";
+
+
 
 dotenv.config();
 
@@ -37,6 +40,7 @@ app.use("/api/students", studentRoutes);
 app.use("/api", staffRoutes);
 app.use("/api", subjectPlanningRoutes);
 app.use("/api", attendanceRoutes); // ✅ attendance here
+app.use("/api", hodRoutes);
 
 // HOME
 app.get("/", (req, res) => {
