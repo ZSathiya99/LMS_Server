@@ -4,7 +4,7 @@ import {
   getHodDashboardData,
   assignStaffToSection,
   updateStaffForSection,
-  deleteStaffFromSection,deleteSection
+  deleteStaffFromSection,deleteSection,getAllocatedSubjects
 } from "../controllers/adminAllocationController.js";
 
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -17,6 +17,9 @@ const router = express.Router();
 
 // Allocate subjects for a semester
 router.post("/allocate-subjects", verifyToken, allocateSubjects);
+
+// GET
+router.get("/subjects",verifyToken, getAllocatedSubjects);
 
 // HOD dashboard (fetch subjects + staff)
 router.get("/hod-dashboard", verifyToken, getHodDashboardData);

@@ -94,6 +94,55 @@ export const allocateSubjects = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+// GET /api/admin-allocation/subjects
+export const getAllocatedSubjects = async (req, res) => {
+  try {
+    const {
+      department,
+      subjectType,
+      semester,
+      semesterType,
+      regulation,
+    } = req.query;
+
+    if (
+      !department ||
+      !subjectType ||
+      !semester ||
+      !semesterType ||
+      !regulation
+    ) {
+      return res.status(400).json({
+        message: "All query parameters are required",
+      });
+    }
+
+    const safe = (v) => (v ? v.toString().trim() : "");
+
+    const allocation = await AdminAllocation.findOne({
+      department: { $regex: safe(department), $options: "i" },
+      subjectType: { $regex: safe(subjectType), $options: "i" },
+      semester: Number(semester),
+      semesterType: { $regex: safe(semesterType), $options: "i" },
+      regulation: { $regex: safe(regulation.toString()), $options: "i" },
+    });
+
+    if (!allocation) {
+      return res.status(404).json({
+        message: "No allocation found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Allocated subjects fetched successfully",
+      allocation,
+    });
+  } catch (error) {
+    console.error("Get Allocated Subjects Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 export const getHodDashboardSubjects = async (req, res) => {
   try {
