@@ -51,9 +51,9 @@ export const addFaculty = async (req, res) => {
       password,
     } = req.body;
 
-    if (!email || !password || !firstName || !lastName || !employeeId) {
+    if (!email  || !firstName || !lastName || !employeeId) {
       return res.status(400).json({
-        message: "Email, password, firstName, lastName & employeeId are required",
+        message: "Email, firstName, lastName & employeeId are required",
       });
     }
 
@@ -71,13 +71,13 @@ export const addFaculty = async (req, res) => {
     if (user) {
       user.name = `${firstName} ${lastName}`.trim();
       user.role = role || "faculty";
-      user.password = password;   // RAW PASSWORD
+      user.password = password || "123456";   // RAW PASSWORD
       await user.save();
     } else {
       user = await User.create({
         name: `${firstName} ${lastName}`.trim(),
         email: cleanEmail,
-        password: password,      // RAW PASSWORD
+        password: password || "123456",      // RAW PASSWORD
         role: role || "faculty",
       });
     }
