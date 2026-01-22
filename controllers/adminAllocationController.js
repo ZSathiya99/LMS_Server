@@ -286,6 +286,7 @@ export const getHodDashboardData = async (req, res) => {
       email: f.email,
       designation: f.designation,
       role: f.role,
+      
     }));
 
     // Final response

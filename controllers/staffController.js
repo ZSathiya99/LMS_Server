@@ -3,7 +3,8 @@ import AdminAllocation from "../models/adminAllocationModel.js";
 
 export const getStaffSubjectPlanning = async (req, res) => {
   try {
-    const staffId = req.user.id;
+    console.log(req)
+    const staffId = req.user.facultyId;
 
     const allocations = await AdminAllocation.find({
       "subjects.sections.staff.id": staffId,
