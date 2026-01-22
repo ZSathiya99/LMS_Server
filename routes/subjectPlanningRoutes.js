@@ -3,10 +3,15 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 import {
   addNewTopic,
   editTopic,
-  deleteTopic,
+  deleteTopic,getStaffSubjectPlanning
 } from "../controllers/subjectPlanningController.js";
 
 const router = express.Router();
+router.get(
+  "/staff/subject-planning",
+  verifyToken,
+  getStaffSubjectPlanning
+);
 
 router.post("/staff/subject-planning/topic", verifyToken, addNewTopic);
 router.put("/staff/subject-planning/topic/:topicId", verifyToken, editTopic);

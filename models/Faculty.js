@@ -1,8 +1,14 @@
-// models/Faculty.js
 import mongoose from "mongoose";
 
 const FacultySchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
+
     salutation: String,
 
     firstName: {
@@ -33,11 +39,6 @@ const FacultySchema = new mongoose.Schema(
       required: true,
     },
 
-    password: {
-      type: String,
-      required: true, // hashed
-    },
-
     employeeId: {
       type: String,
       required: true,
@@ -49,28 +50,19 @@ const FacultySchema = new mongoose.Schema(
       required: true,
     },
 
-    // 🔐 ROLE-BASED ACCESS (Single Source of Truth)
-    role: {
+    // Academic Position (NOT system role)
+    designation: {
       type: String,
       enum: [
-        "faculty",
-        "HOD",
-        "Dean",
         "Professor",
         "Assistant Professor",
         "Associate Professor",
-        "admin",
+        "HOD",
+        "Dean",
       ],
-      default: "faculty",
+      required: true,
     },
 
-    // ✅ Only filled if role === "HOD"
-    hodDepartment: {
-      type: String,
-      default: null,
-    },
-
-    designation: String,
     qualification: String,
     workType: String,
     joiningDate: Date,

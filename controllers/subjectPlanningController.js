@@ -1,4 +1,81 @@
 import SubjectPlanning from "../models/SubjectPlanning.js";
+import AdminAllocation from "../models/adminAllocationModel.js";
+
+// 🔹 Helper function to map semester → academic year
+const getAcademicYear = (semester) => {
+  if (semester === 1 || semester === 2) return "1st Year";
+  if (semester === 3 || semester === 4) return "2nd Year";
+  if (semester === 5 || semester === 6) return "3rd Year";
+  if (semester === 7 || semester === 8) return "4th Year";
+  return `${semester}th Semester`;
+};
+
+// ✅ GET /api/staff/subject-planning
+export const getStaffSubjectPlanning = async (req, res) => {
+  try {
+    const userId = req.user.id; // JWT → User ID
+
+    // Step 1: Find faculty using userId
+    const faculty = await Faculty.findOne({ userId });
+
+    if (!faculty) {
+      return res.status(404).json({
+        message: "Faculty profile not found",
+        data: [],
+      });
+    }
+
+    const staffId = faculty._id; // REAL faculty ID
+
+    // Step 2: Query allocations using FACULTY ID
+    const allocations = await AdminAllocation.find({
+      "subjects.sections.staff.id": staffId,
+    });
+
+    if (!allocations.length) {
+      return res.status(200).json({
+        message: "No subjects assigned",
+        data: [],
+      });
+    }
+
+    const result = [];
+
+    allocations.forEach((allocation) => {
+      allocation.subjects.forEach((subject) => {
+        subject.sections.forEach((section) => {
+          if (section.staff?.id?.toString() === staffId.toString()) {
+            result.push({
+              subjectId: subject._id,
+              subjectCode: subject.code,
+              subjectName: subject.subject,
+              credits: subject.credits,
+
+              department: allocation.department,
+              year: getAcademicYear(allocation.semester),
+
+              section: section.sectionName,
+              semester: allocation.semester,
+              semesterType: allocation.semesterType,
+              academicYear: allocation.regulation,
+            });
+          }
+        });
+      });
+    });
+
+    return res.status(200).json({
+      message: "Subject planning fetched successfully",
+      total: result.length,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Subject Planning Error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+
 
 export const addNewTopic = async (req, res) => {
   try {

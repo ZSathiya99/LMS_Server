@@ -52,6 +52,23 @@ export const addFaculty = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    let user = await User.findOne({ email });
+
+if (user) {
+  // Update existing user
+  user.name = `${firstName} ${lastName}`.trim();
+  user.role = "faculty";
+  if (password) user.password = password; // will be hashed by User pre-save
+  await user.save();
+} else {
+  // Create new user
+  user = await User.create({
+    name: `${firstName} ${lastName}`.trim(),
+    email,
+    password, // plain → User pre-save hook hashes
+    role: "faculty",
+  });
+}
 
     const newFaculty = new Faculty({
       salutation,
@@ -75,7 +92,8 @@ export const addFaculty = async (req, res) => {
     });
 
     await newFaculty.save();
-
+user.facultyId = newFaculty._id;
+await user.save();
     res.status(201).json({
       message: "Faculty added successfully",
       faculty: newFaculty,
@@ -294,6 +312,12 @@ export const uploadMultipleFaculty = async (req, res) => {
     try {
       const result = await Faculty.insertMany(facultyDocs, { ordered: false });
       insertedCount = result.length;
+      for (const fac of result) {
+  await User.updateOne(
+    { email: fac.email },
+    { $set: { facultyId: fac._id, role: "faculty" } }
+  );
+}
     } catch (insertErr) {
       // If some docs fail (duplicates/validation) insertMany throws — partial success may exist
       console.warn("Partial insert error:", insertErr.message || insertErr);

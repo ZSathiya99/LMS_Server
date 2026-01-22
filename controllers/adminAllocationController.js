@@ -415,6 +415,7 @@ export const assignStaffToSection = async (req, res) => {
   }
 };
 
+
 export const updateStaffForSection = async (req, res) => {
   try {
     const { sectionId } = req.params;

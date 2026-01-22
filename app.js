@@ -42,6 +42,7 @@ app.use("/api", subjectPlanningRoutes);
 app.use("/api", attendanceRoutes); // ✅ attendance here
 app.use("/api", hodRoutes);
 
+
 // HOME
 app.get("/", (req, res) => {
   res.send("LMS Backend is running ✅");

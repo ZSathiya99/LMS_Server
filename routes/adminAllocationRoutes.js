@@ -32,6 +32,7 @@ router.get("/hod-dashboard", verifyToken, getHodDashboardData);
 router.post("/admin-allocation", verifyToken, assignStaffToSection);
 
 
+
 router.patch("/update-staff/:sectionId", verifyToken, updateStaffForSection);
 router.delete("/delete-staff/:sectionId", verifyToken, deleteStaffFromSection);
 router.delete("/delete-section/:sectionId", verifyToken, deleteSection);
