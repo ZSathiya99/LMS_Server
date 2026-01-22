@@ -2,12 +2,12 @@ import mongoose from "mongoose";
 
 const FacultySchema = new mongoose.Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      unique: true,
-    },
+    // userId: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "User",
+    //   required: true,
+    //   unique: true,
+    // },
 
     salutation: String,
 
@@ -59,6 +59,7 @@ const FacultySchema = new mongoose.Schema(
         "Associate Professor",
         "HOD",
         "Dean",
+        "Faculty"
       ],
       required: true,
     },

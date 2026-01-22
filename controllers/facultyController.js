@@ -19,6 +19,12 @@ const getNorm = (normalized, ...variants) => {
   return undefined;
 };
 
+const clean = (v) =>
+  String(v || "")
+    .replace(/['"]+/g, "")
+    .trim();
+
+
 // ======================================================
 // ✅ ADD FACULTY (Manual Add)
 // ======================================================
@@ -42,41 +48,48 @@ export const addFaculty = async (req, res) => {
       department,
       noticePeriod,
       role,
-      password
+      password,
     } = req.body;
 
     if (!email || !password || !firstName || !lastName || !employeeId) {
       return res.status(400).json({
-        message: "Email, password, firstName, lastName & employeeId required",
+        message: "Email, password, firstName, lastName & employeeId are required",
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    let user = await User.findOne({ email });
+    // normalize email (IMPORTANT)
+    const cleanEmail = email.replace(/['"]+/g, "").trim().toLowerCase();
 
-if (user) {
-  // Update existing user
-  user.name = `${firstName} ${lastName}`.trim();
-  user.role = "faculty";
-  if (password) user.password = password; // will be hashed by User pre-save
-  await user.save();
-} else {
-  // Create new user
-  user = await User.create({
-    name: `${firstName} ${lastName}`.trim(),
-    email,
-    password, // plain → User pre-save hook hashes
-    role: "faculty",
-  });
-}
+    const existingFaculty = await Faculty.findOne({ email: cleanEmail });
+    if (existingFaculty) {
+      return res.status(400).json({ message: "Faculty already exists" });
+    }
 
-    const newFaculty = new Faculty({
+    // 1️⃣ Create / Update User (SEND RAW PASSWORD ONLY)
+    let user = await User.findOne({ email: cleanEmail });
+
+    if (user) {
+      user.name = `${firstName} ${lastName}`.trim();
+      user.role = role || "faculty";
+      user.password = password;   // RAW PASSWORD
+      await user.save();
+    } else {
+      user = await User.create({
+        name: `${firstName} ${lastName}`.trim(),
+        email: cleanEmail,
+        password: password,      // RAW PASSWORD
+        role: role || "faculty",
+      });
+    }
+
+    // 2️⃣ Create Faculty Profile
+    const faculty = await Faculty.create({
       salutation,
       firstName,
       lastName,
       gender,
       dateOfBirth,
-      email,
+      email: cleanEmail,
       mobileNumber,
       qualification,
       workType,
@@ -87,22 +100,24 @@ if (user) {
       reportingManager,
       department,
       noticePeriod,
-      role: role || "faculty",
-      password: hashedPassword,
     });
 
-    await newFaculty.save();
-user.facultyId = newFaculty._id;
-await user.save();
-    res.status(201).json({
-      message: "Faculty added successfully",
-      faculty: newFaculty,
+    // 3️⃣ Link user → faculty
+    user.facultyId = faculty._id;
+    await user.save();
+
+    return res.status(201).json({
+      message: "Faculty + User created successfully",
+      faculty,
+      userId: user._id,
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Add Faculty Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // ======================================================
@@ -198,28 +213,26 @@ export const uploadMultipleFaculty = async (req, res) => {
 
       // --- Resolve essential fields with many fallbacks ---
       // email
-      const email = getNorm(normalized, "email", "mail", "emailaddress", "emailid") 
-        || `autogen${Date.now()}${i}@college.edu`;
+      const email = clean(
+  getNorm(normalized, "email", "mail", "emailaddress", "emailid")
+) || `autogen${Date.now()}${i}@college.edu`;
+const cleanEmail = email.toLowerCase().trim();
 
-      // phone
-      const phone = getNorm(normalized, "phonenumber", "phone", "mobile", "mobilenumber") 
-        || ("9" + Math.floor(100000000 + Math.random() * 900000000));
 
-      // employee id
-      const employeeId = getNorm(normalized, "employeeid", "empid", "employeeidnumber") 
-        || `EMP${1000 + i}`;
+const phone = clean(
+  getNorm(normalized, "phonenumber", "phone", "mobile", "mobilenumber")
+) || ("9" + Math.floor(100000000 + Math.random() * 900000000));
+
+const employeeId = clean(
+  getNorm(normalized, "employeeid", "empid", "employeeidnumber")
+) || `EMP${Date.now()}${i}`;
+
+
 
       // password (ensure string)
-      const rawPwd = String(getNorm(normalized, "password", "pwd") || "123456");
-      // hash for faculty password storage
-      let hashedPassword;
-      try {
-        hashedPassword = await bcrypt.hash(rawPwd, 10);
-      } catch (err) {
-        // fallback if something weird happens
-        hashedPassword = await bcrypt.hash("123456", 10);
-      }
+      const rawPwd = clean(getNorm(normalized, "password", "pwd")) || "123456";
 
+     
       // Name splitting (allow firstname/lastname or Name)
       const nameFromCols = getNorm(normalized, "name", "fullname");
       const firstName = getNorm(normalized, "firstname", "first") || (nameFromCols ? nameFromCols.split(" ")[0] : `User${i}`);
@@ -233,11 +246,24 @@ export const uploadMultipleFaculty = async (req, res) => {
       const workType = getNorm(normalized, "worktype") || "";
       const joiningDate = getNorm(normalized, "joiningdate") || null;
       const jobTitle = getNorm(normalized, "jobtitle") || "";
-      const designation = getNorm(normalized, "designation") || "";
+      let designation = clean(getNorm(normalized, "designation")) || "Faculty";
+
+const desMap = {
+  "professor": "Professor",
+  "assistant professor": "Assistant Professor",
+  "associate professor": "Associate Professor",
+  "hod": "HOD",
+  "dean": "Dean",
+  "faculty": "Faculty"
+};
+
+designation = desMap[designation.toLowerCase()] || "Faculty";
+
       const reportingManager = getNorm(normalized, "reportingmanager") || "";
       const department = getNorm(normalized, "department", "dept") || "";
       const noticePeriod = getNorm(normalized, "noticeperiod") || "";
-      const role = getNorm(normalized, "role") || "faculty";
+     const role = clean(getNorm(normalized, "role")) || "faculty";
+
 
       // Build faculty doc
       const facultyDoc = {
@@ -246,9 +272,9 @@ export const uploadMultipleFaculty = async (req, res) => {
         lastName,
         gender,
         dateOfBirth,
-        email,
+       email: cleanEmail,
+
         mobileNumber: String(phone),
-        password: hashedPassword, // hashed
         qualification,
         workType,
         employeeId: String(employeeId),
@@ -258,7 +284,7 @@ export const uploadMultipleFaculty = async (req, res) => {
         reportingManager,
         department,
         noticePeriod,
-        role,
+        
       };
 
       facultyDocs.push(facultyDoc);
@@ -269,13 +295,15 @@ export const uploadMultipleFaculty = async (req, res) => {
       // User model's pre-save will hash password, so send raw password here
       // Use upsert logic: if user exists, update role & name & password (if provided)
       try {
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ email: cleanEmail });
+
 
         if (existingUser) {
           // update selective fields (don't overwrite with empty values)
           const userUpdate = {};
           if (firstName || lastName) userUpdate.name = `${firstName} ${lastName}`.trim();
-          if (role) userUpdate.role = role;
+          if (role) userUpdate.role = role.trim().toLowerCase();
+
           if (rawPwd) userUpdate.password = rawPwd; // will be hashed by User pre-save if updated via save()
 
           // Save update safely
@@ -294,9 +322,11 @@ export const uploadMultipleFaculty = async (req, res) => {
           // Create new user (User model will hash password)
           await User.create({
             name: `${firstName} ${lastName}`.trim() || email,
-            email,
+            email: cleanEmail,
+
             password: rawPwd, // plain here: model pre-save will hash
-            role,
+            role: role.trim().toLowerCase(),
+
           });
           usersCreated++;
         }
@@ -314,7 +344,7 @@ export const uploadMultipleFaculty = async (req, res) => {
       insertedCount = result.length;
       for (const fac of result) {
   await User.updateOne(
-    { email: fac.email },
+    { email: fac.email.toLowerCase() },
     { $set: { facultyId: fac._id, role: "faculty" } }
   );
 }

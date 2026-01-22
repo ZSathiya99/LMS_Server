@@ -104,12 +104,15 @@ res.json({
     user.role,
     user.name,
     user.email,
+    user.facultyId,
     tokenDepartment     // ⭐ send correct department
   ),
   user: {
     id: user._id,
     name: user.name,
     email: user.email,
+    facultyId:user.facultyId,
+
     role: user.role,
     department: tokenDepartment,   // ⭐ correct department
     ...extraData,
