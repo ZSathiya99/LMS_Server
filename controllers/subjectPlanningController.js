@@ -87,7 +87,7 @@ export const addNewTopic = async (req, res) => {
       referenceBook,
     } = req.body;
 
-    const staffId = req.user.id; // from JWT
+    const staffId = req.user.id.toString();
 
     if (
       !subjectId ||
@@ -100,13 +100,10 @@ export const addNewTopic = async (req, res) => {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    // Find subject planning record
-    let planning = await SubjectPlanning.findOne({
-      staffId,
-      subjectId,
-    });
+    // Find existing planning
+    let planning = await SubjectPlanning.findOne({ staffId, subjectId });
 
-    // If first time → create
+    // Create if first time
     if (!planning) {
       planning = new SubjectPlanning({
         staffId,
@@ -115,20 +112,16 @@ export const addNewTopic = async (req, res) => {
       });
     }
 
-    // Find unit
     let unit = planning.units.find((u) => u.unitName === unitName);
 
     if (!unit) {
-      unit = {
-        unitName,
-        topics: [],
-      };
+      unit = { unitName, topics: [] };
       planning.units.push(unit);
     }
 
     const sno = unit.topics.length + 1;
 
-    unit.topics.push({
+    const newTopic = {
       sno,
       topicName,
       teachingLanguage,
@@ -136,15 +129,16 @@ export const addNewTopic = async (req, res) => {
       hours,
       teachingAid,
       referenceBook,
-    });
+    };
 
-    planning.markModified("units");
-    await planning.save();
+    unit.topics.push(newTopic);
 
-    res.status(201).json({
+    await planning.save();   // 🔥 GUARANTEED SAVE
+
+    return res.status(201).json({
       message: "Topic added successfully",
       unitName,
-      topic: unit.topics[unit.topics.length - 1],
+      topic: newTopic,
     });
   } catch (error) {
     console.error("Add Topic Error:", error);
@@ -153,9 +147,10 @@ export const addNewTopic = async (req, res) => {
 };
 
 
+
 export const getSubjectTopics = async (req, res) => {
   try {
-    const staffId = req.user.id.toString();   // ✅ ALWAYS USER ID
+    const staffId = req.user.id.toString();
     const { subjectId } = req.params;
 
     const planning = await SubjectPlanning.findOne({
@@ -172,13 +167,14 @@ export const getSubjectTopics = async (req, res) => {
 
     return res.status(200).json({
       message: "Topics fetched successfully",
-      units: planning.units || [],
+      units: planning.units,
     });
   } catch (error) {
     console.error("Get Topics Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
