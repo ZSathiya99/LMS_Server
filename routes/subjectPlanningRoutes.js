@@ -3,14 +3,20 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 import {
   addNewTopic,
   editTopic,
-  deleteTopic,getStaffSubjectPlanning
+  deleteTopic,getSubjectTopics
 } from "../controllers/subjectPlanningController.js";
 
 const router = express.Router();
+// router.get(
+//   "/staff/subject-planning",
+//   verifyToken,
+//   getStaffSubjectPlanning
+// );
+// GET → Fetch topics
 router.get(
-  "/staff/subject-planning",
+  "/subject-planning/topics/:subjectId",
   verifyToken,
-  getStaffSubjectPlanning
+  getSubjectTopics
 );
 
 router.post("/staff/subject-planning/topic", verifyToken, addNewTopic);

@@ -3,11 +3,10 @@ import AdminAllocation from "../models/adminAllocationModel.js";
 
 export const getStaffSubjectPlanning = async (req, res) => {
   try {
-    console.log(req)
-    const staffId = req.user.facultyId;
+    const staffId = req.user.facultyId; // faculty _id from token
 
     const allocations = await AdminAllocation.find({
-      "subjects.sections.staff.id": staffId,
+      "subjects.sections.staff.id": staffId.toString(),
     });
 
     const result = [];
@@ -15,8 +14,9 @@ export const getStaffSubjectPlanning = async (req, res) => {
     allocations.forEach((allocation) => {
       allocation.subjects.forEach((subject) => {
         subject.sections.forEach((section) => {
-          if (section.staff?.id === staffId) {
+          if (section.staff?.id?.toString() === staffId.toString()) {
             result.push({
+              subjectId: subject._id,          // 🔥 THIS IS WHAT YOU NEED
               department: allocation.department,
               regulation: allocation.regulation,
               semester: allocation.semester,
@@ -31,8 +31,13 @@ export const getStaffSubjectPlanning = async (req, res) => {
       });
     });
 
-    res.json({ data: result });
+    return res.status(200).json({
+      total: result.length,
+      data: result,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Subject Planning Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
+

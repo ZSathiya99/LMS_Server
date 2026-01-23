@@ -1,79 +1,76 @@
 import SubjectPlanning from "../models/SubjectPlanning.js";
 import AdminAllocation from "../models/adminAllocationModel.js";
+import Faculty from "../models/Faculty.js";
 
-// 🔹 Helper function to map semester → academic year
-const getAcademicYear = (semester) => {
-  if (semester === 1 || semester === 2) return "1st Year";
-  if (semester === 3 || semester === 4) return "2nd Year";
-  if (semester === 5 || semester === 6) return "3rd Year";
-  if (semester === 7 || semester === 8) return "4th Year";
-  return `${semester}th Semester`;
-};
 
-// ✅ GET /api/staff/subject-planning
-export const getStaffSubjectPlanning = async (req, res) => {
-  try {
-    const userId = req.user.id; // JWT → User ID
+// // Helper function
+// const getAcademicYear = (semester) => {
+//   if (semester === 1 || semester === 2) return "1st Year";
+//   if (semester === 3 || semester === 4) return "2nd Year";
+//   if (semester === 5 || semester === 6) return "3rd Year";
+//   if (semester === 7 || semester === 8) return "4th Year";
+//   return `${semester}th Semester`;
+// };
 
-    // Step 1: Find faculty using userId
-    const faculty = await Faculty.findOne({ userId });
+// export const getStaffSubjectPlanning = async (req, res) => {
+//   try {
+//     const userId = req.user.id; // JWT → User ID
 
-    if (!faculty) {
-      return res.status(404).json({
-        message: "Faculty profile not found",
-        data: [],
-      });
-    }
+//     const faculty = await Faculty.findOne({ userId });
 
-    const staffId = faculty._id; // REAL faculty ID
+//     if (!faculty) {
+//       return res.status(404).json({
+//         message: "Faculty profile not found",
+//         data: [],
+//       });
+//     }
 
-    // Step 2: Query allocations using FACULTY ID
-    const allocations = await AdminAllocation.find({
-      "subjects.sections.staff.id": staffId,
-    });
+//     const staffId = faculty._id;
 
-    if (!allocations.length) {
-      return res.status(200).json({
-        message: "No subjects assigned",
-        data: [],
-      });
-    }
+//     const allocations = await AdminAllocation.find({
+//       "subjects.sections.staff.id": staffId.toString(),
+//     });
 
-    const result = [];
+//     if (!allocations.length) {
+//       return res.status(200).json({
+//         message: "No subjects assigned",
+//         data: [],
+//       });
+//     }
 
-    allocations.forEach((allocation) => {
-      allocation.subjects.forEach((subject) => {
-        subject.sections.forEach((section) => {
-          if (section.staff?.id?.toString() === staffId.toString()) {
-            result.push({
-              subjectId: subject._id,
-              subjectCode: subject.code,
-              subjectName: subject.subject,
-              credits: subject.credits,
+//     const result = [];
 
-              department: allocation.department,
-              year: getAcademicYear(allocation.semester),
+//     allocations.forEach((allocation) => {
+//       allocation.subjects.forEach((subject) => {
+//         subject.sections.forEach((section) => {
+//           if (section.staff?.id?.toString() === staffId.toString()) {
+//             result.push({
+//               subjectId: subject._id,        // 🔥 THIS WAS MISSING
+//               subjectCode: subject.code,
+//               subjectName: subject.subject,
+//               department: allocation.department,
+//               regulation: allocation.regulation,
+//               semester: allocation.semester,
+//               semesterType: allocation.semesterType,
+//               sectionName: section.sectionName,
+//             });
+//           }
+//         });
+//       });
+//     });
 
-              section: section.sectionName,
-              semester: allocation.semester,
-              semesterType: allocation.semesterType,
-              academicYear: allocation.regulation,
-            });
-          }
-        });
-      });
-    });
+//     return res.status(200).json({
+//       message: "Subject planning fetched successfully",
+//       total: result.length,
+//       data: result,
+//     });
+//   } catch (error) {
+//     console.error("Subject Planning Error:", error);
+//     return res.status(500).json({ message: error.message });
+//   }
+// };
 
-    return res.status(200).json({
-      message: "Subject planning fetched successfully",
-      total: result.length,
-      data: result,
-    });
-  } catch (error) {
-    console.error("Subject Planning Error:", error);
-    return res.status(500).json({ message: error.message });
-  }
-};
+
 
 
 
@@ -152,6 +149,40 @@ export const addNewTopic = async (req, res) => {
   } catch (error) {
     console.error("Add Topic Error:", error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+export const getSubjectTopics = async (req, res) => {
+  try {
+    const staffId = req.user.id;
+    const { subjectId } = req.params;
+
+    if (!subjectId) {
+      return res.status(400).json({
+        message: "subjectId is required",
+      });
+    }
+
+    const planning = await SubjectPlanning.findOne({
+      staffId,
+      subjectId,
+    });
+
+    if (!planning) {
+      return res.status(200).json({
+        message: "No topics added yet",
+        units: [],
+      });
+    }
+
+    return res.status(200).json({
+      message: "Topics fetched successfully",
+      units: planning.units || [],
+    });
+  } catch (error) {
+    console.error("Get Topics Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
