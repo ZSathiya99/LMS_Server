@@ -155,20 +155,11 @@ export const addNewTopic = async (req, res) => {
 
 export const getSubjectTopics = async (req, res) => {
   try {
-    const staffId = req.user.id.toString();   // 🔥 FIX: use USER ID
+    const staffId = req.user.id.toString();   // ✅ ALWAYS USER ID
     const { subjectId } = req.params;
 
-    if (!subjectId) {
-      return res.status(400).json({
-        message: "subjectId is required",
-      });
-    }
-
-    console.log("staffId:", staffId);
-    console.log("subjectId:", subjectId);
-
     const planning = await SubjectPlanning.findOne({
-      staffId: staffId,
+      staffId,
       subjectId: subjectId.toString(),
     });
 
@@ -188,6 +179,7 @@ export const getSubjectTopics = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
