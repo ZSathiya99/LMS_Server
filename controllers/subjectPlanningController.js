@@ -155,7 +155,7 @@ export const addNewTopic = async (req, res) => {
 
 export const getSubjectTopics = async (req, res) => {
   try {
-    const staffId = req.user.facultyId;   // ✅ IMPORTANT FIX
+    const staffId = req.user.id.toString();   // 🔥 FIX: use USER ID
     const { subjectId } = req.params;
 
     if (!subjectId) {
@@ -164,9 +164,12 @@ export const getSubjectTopics = async (req, res) => {
       });
     }
 
+    console.log("staffId:", staffId);
+    console.log("subjectId:", subjectId);
+
     const planning = await SubjectPlanning.findOne({
-      staffId: staffId.toString(),        // ✅ SAFE MATCH
-      subjectId,
+      staffId: staffId,
+      subjectId: subjectId.toString(),
     });
 
     if (!planning) {
@@ -185,6 +188,8 @@ export const getSubjectTopics = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 
 
