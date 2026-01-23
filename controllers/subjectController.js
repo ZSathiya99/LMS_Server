@@ -66,6 +66,19 @@ export const uploadSubjectsFromExcel = async (req, res) => {
   }
 };
 
+export const getAllSubjects = async (req, res) => {
+  try {
+    const subjects = await Subject.find().sort({ department: 1, code: 1 });
+
+    res.status(200).json({
+      total: subjects.length,
+      subjects,
+    });
+  } catch (error) {
+    console.error("Get All Subjects Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
 

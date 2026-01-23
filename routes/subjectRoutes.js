@@ -1,5 +1,5 @@
 import express from "express";
-import { getSubjectsByDepartment,addSubject,uploadSubjectsFromExcel,updateSubject,deleteSubject } from "../controllers/subjectController.js";
+import { getSubjectsByDepartment,addSubject,uploadSubjectsFromExcel,updateSubject,deleteSubject,getAllSubjects } from "../controllers/subjectController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { uploadExcel } from "../middleware/upload.js";
 
@@ -21,6 +21,8 @@ router.put("/subjects/update/:id",verifyToken, updateSubject);
 
 // DELETE Subject
 router.delete("/subjects/delete/:id",verifyToken, deleteSubject);
+
+router.get("/", verifyToken, getAllSubjects);
 
 
 export default router;
