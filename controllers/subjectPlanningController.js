@@ -100,29 +100,7 @@ export const addNewTopic = async (req, res) => {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    // Find existing planning
-    let planning = await SubjectPlanning.findOne({ staffId, subjectId });
-
-    // Create if first time
-    if (!planning) {
-      planning = new SubjectPlanning({
-        staffId,
-        subjectId,
-        units: [],
-      });
-    }
-
-    let unit = planning.units.find((u) => u.unitName === unitName);
-
-    if (!unit) {
-      unit = { unitName, topics: [] };
-      planning.units.push(unit);
-    }
-
-    const sno = unit.topics.length + 1;
-
     const newTopic = {
-      sno,
       topicName,
       teachingLanguage,
       date,
@@ -131,9 +109,36 @@ export const addNewTopic = async (req, res) => {
       referenceBook,
     };
 
-    unit.topics.push(newTopic);
+    // Step 1 — Try to push into existing unit
+    let planning = await SubjectPlanning.findOneAndUpdate(
+      {
+        staffId,
+        subjectId,
+        "units.unitName": unitName,
+      },
+      {
+        $push: {
+          "units.$.topics": newTopic,
+        },
+      },
+      { new: true }
+    );
 
-    await planning.save();   // 🔥 GUARANTEED SAVE
+    // Step 2 — If unit does not exist, create new unit + topic
+    if (!planning) {
+      planning = await SubjectPlanning.findOneAndUpdate(
+        { staffId, subjectId },
+        {
+          $push: {
+            units: {
+              unitName,
+              topics: [newTopic],
+            },
+          },
+        },
+        { upsert: true, new: true }
+      );
+    }
 
     return res.status(201).json({
       message: "Topic added successfully",
@@ -142,9 +147,10 @@ export const addNewTopic = async (req, res) => {
     });
   } catch (error) {
     console.error("Add Topic Error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
