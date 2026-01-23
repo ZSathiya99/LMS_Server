@@ -41,6 +41,8 @@ app.use("/api", staffRoutes);
 app.use("/api", subjectPlanningRoutes);
 app.use("/api", attendanceRoutes); // ✅ attendance here
 app.use("/api", hodRoutes);
+app.use("/api/students", attendanceRoutes);
+
 
 
 // HOME

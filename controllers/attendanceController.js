@@ -5,6 +5,48 @@ import Student from "../models/Student.js";
 import StudentAttendance from "../models/StudentAttendance.js";
 
 
+export const getStudentsList = async (req, res) => {
+  try {
+    let { department, year, section } = req.query;
+
+    const filter = {};
+
+    if (department) {
+      filter.department = department;
+    }
+
+    // 🔥 IMPORTANT FIX — DO NOT CONVERT YEAR
+    if (year) {
+      filter.year = year;  // "1st Year", "2nd Year", ...
+    }
+
+    if (section && section !== "Unallocated") {
+      filter.section = section;
+    }
+
+    if (section === "Unallocated") {
+      filter.$or = [
+        { section: { $exists: false } },
+        { section: null },
+        { section: "" },
+      ];
+    }
+
+    const students = await Student.find(filter)
+      .sort({ rollNumber: 1, firstName: 1 })
+      .select("rollNumber firstName lastName department year section");
+
+    return res.status(200).json({
+      total: students.length,
+      students,
+    });
+
+  } catch (error) {
+    console.error("Student List Error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 
 /* =========================================================
    GET ATTENDANCE OVERVIEW (Previous Screen)
