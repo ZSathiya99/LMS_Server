@@ -55,7 +55,7 @@ export const markAttendance = async (req, res) => {
 ========================================================= */
 export const getAttendanceStudents = async (req, res) => {
   try {
-    const {
+    let {
       department,
       year,
       section,
@@ -64,38 +64,38 @@ export const getAttendanceStudents = async (req, res) => {
       hour,
     } = req.query;
 
-    if (
-      !department ||
-      !year ||
-      !section ||
-      !subjectId ||
-      !date ||
-      !hour
-    ) {
+    if (!department || !year || !section || !subjectId) {
       return res.status(400).json({ message: "Missing query parameters" });
     }
 
-    // 1️⃣ Fetch students of class
+    // 🔥 Normalize section value
+    if (section.startsWith("Section ")) {
+      section = section.replace("Section ", "");
+    }
+
+    // 1️⃣ Get all students of class
     const students = await Student.find({
       department,
       year,
       section,
     }).sort({ rollNumber: 1 });
 
-    // 2️⃣ Fetch attendance records
-    const attendance = await StudentAttendance.find({
-      subjectId: subjectId.trim(),
-      date,
-      hour,
-    });
+    // 2️⃣ Attendance map (only if date & hour selected)
+    let statusMap = {};
 
-    // 3️⃣ Create studentId -> status map
-    const statusMap = {};
-    attendance.forEach(a => {
-      statusMap[a.studentId.toString()] = a.status;
-    });
+    if (date && hour) {
+      const attendance = await StudentAttendance.find({
+        subjectId: subjectId.trim(),
+        date,
+        hour,
+      });
 
-    // 4️⃣ Build response (default Absent)
+      attendance.forEach(a => {
+        statusMap[a.studentId.toString()] = a.status;
+      });
+    }
+
+    // 3️⃣ Build response → DEFAULT ABSENT
     const result = students.map(s => ({
       _id: s._id,
       rollNumber: s.rollNumber,
@@ -113,3 +113,4 @@ export const getAttendanceStudents = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
