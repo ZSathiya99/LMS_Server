@@ -1,35 +1,48 @@
 import mongoose from "mongoose";
 
-const attendanceSchema = new mongoose.Schema(
+const studentAttendanceSchema = new mongoose.Schema(
   {
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Student",
       required: true,
     },
-    rollNo: String,
-    name: String,
 
-    department: String,
-    year: String,
-    subjectCode: String,
-    section: String,
+    subjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subject",
+      required: true,
+    },
 
-    date: String, // "04-12-2025"
-    hour: String, // "1st Hour (08:40AM - 09:30AM)"
+    date: {
+      type: String, // YYYY-MM-DD
+      required: true,
+    },
+
+    hour: {
+      type: String, // "1st Hour", "2nd Hour"
+      required: true,
+    },
 
     status: {
       type: String,
       enum: ["Present", "Absent", "On-Duty"],
-      default: "Present",
+      required: true,
     },
 
     markedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Faculty",
+      required: true,
     },
   },
   { timestamps: true }
 );
 
-export default mongoose.model("StudentAttendance", attendanceSchema);
+// 🔥 UNIQUE — Only one record per student per hour per subject per day
+studentAttendanceSchema.index(
+  { studentId: 1, subjectId: 1, date: 1, hour: 1 },
+  { unique: true }
+);
+
+export default mongoose.model("StudentAttendance", studentAttendanceSchema);

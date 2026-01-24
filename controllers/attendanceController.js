@@ -1,248 +1,115 @@
-// controllers/attendanceController.js
-
-import AdminAllocation from "../models/adminAllocationModel.js";
 import Student from "../models/Student.js";
 import StudentAttendance from "../models/StudentAttendance.js";
 
 
-export const getStudentsList = async (req, res) => {
+/* =========================================================
+   POST — MARK ATTENDANCE (Present / Absent / On-Duty)
+========================================================= */
+export const markAttendance = async (req, res) => {
   try {
-    let { department, year, section } = req.query;
+    let {
+      studentId,
+      subjectId,
+      date,
+      hour,
+      status,
+    } = req.body;
 
-    const filter = {};
+    const staffId = req.user.facultyId;   // faculty id from JWT
 
-    if (department) {
-      filter.department = department;
+    if (!studentId || !subjectId || !date || !hour || !status) {
+      return res.status(400).json({ message: "Required fields missing" });
     }
 
-    // 🔥 IMPORTANT FIX — DO NOT CONVERT YEAR
-    if (year) {
-      filter.year = year;  // "1st Year", "2nd Year", ...
-    }
+    // 🔥 CLEAN IDS
+    studentId = studentId.trim();
+    subjectId = subjectId.trim();
 
-    if (section && section !== "Unallocated") {
-      filter.section = section;
-    }
-
-    if (section === "Unallocated") {
-      filter.$or = [
-        { section: { $exists: false } },
-        { section: null },
-        { section: "" },
-      ];
-    }
-
-    const students = await Student.find(filter)
-      .sort({ rollNumber: 1, firstName: 1 })
-      .select("rollNumber firstName lastName department year section");
+    const attendance = await StudentAttendance.findOneAndUpdate(
+      { studentId, subjectId, date, hour },
+      {
+        studentId,
+        subjectId,
+        date,
+        hour,
+        status,
+        markedBy: staffId,
+      },
+      { upsert: true, new: true }
+    );
 
     return res.status(200).json({
-      total: students.length,
-      students,
+      message: `Marked ${status} successfully`,
+      attendance,
     });
 
   } catch (error) {
-    console.error("Student List Error:", error);
+    console.error("Mark Attendance Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
 
 
 /* =========================================================
-   GET ATTENDANCE OVERVIEW (Previous Screen)
+   GET — STUDENT LIST WITH STATUS (DEFAULT ABSENT)
 ========================================================= */
-export const getAttendanceOverview = async (req, res) => {
+export const getAttendanceStudents = async (req, res) => {
   try {
-    const staffId = req.user.id; // from JWT
+    const {
+      department,
+      year,
+      section,
+      subjectId,
+      date,
+      hour,
+    } = req.query;
 
-    const allocations = await AdminAllocation.find({
-      "subjects.sections.staff.id": staffId,
+    if (
+      !department ||
+      !year ||
+      !section ||
+      !subjectId ||
+      !date ||
+      !hour
+    ) {
+      return res.status(400).json({ message: "Missing query parameters" });
+    }
+
+    // 1️⃣ Fetch students of class
+    const students = await Student.find({
+      department,
+      year,
+      section,
+    }).sort({ rollNumber: 1 });
+
+    // 2️⃣ Fetch attendance records
+    const attendance = await StudentAttendance.find({
+      subjectId: subjectId.trim(),
+      date,
+      hour,
     });
 
-    if (!allocations || allocations.length === 0) {
-      return res.status(200).json({
-        message: "No attendance sections found",
-        total: 0,
-        data: [],
-      });
-    }
+    // 3️⃣ Create studentId -> status map
+    const statusMap = {};
+    attendance.forEach(a => {
+      statusMap[a.studentId.toString()] = a.status;
+    });
 
-    const result = [];
-
-    for (const allocation of allocations) {
-      const { department, semester, semesterType, regulation } = allocation;
-
-      for (const subject of allocation.subjects) {
-        for (const section of subject.sections) {
-          if (section.staff?.id?.toString() === staffId.toString()) {
-            const studentCount = await Student.countDocuments({
-              department,
-              semester,
-              section: section.sectionName,
-            });
-
-            result.push({
-              year: `${semester} Year`,
-              department,
-              section: section.sectionName,
-              students: studentCount,
-              subjectId: subject._id,
-              subjectCode: subject.code,
-              subjectName: subject.subject,
-              semesterType,
-              regulation,
-            });
-          }
-        }
-      }
-    }
+    // 4️⃣ Build response (default Absent)
+    const result = students.map(s => ({
+      _id: s._id,
+      rollNumber: s.rollNumber,
+      name: `${s.firstName} ${s.lastName}`,
+      status: statusMap[s._id.toString()] || "Absent",
+    }));
 
     return res.status(200).json({
-      message: "Attendance overview fetched successfully",
       total: result.length,
-      data: result,
+      students: result,
     });
+
   } catch (error) {
-    console.error("Attendance Overview Error:", error);
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-/* =========================================================
-   MARK PRESENT
-========================================================= */
-export const markPresent = async (req, res) => {
-  try {
-    const {
-      studentId,
-      rollNo,
-      name,
-      department,
-      year,
-      subjectCode,
-      section,
-      date,
-      hour,
-    } = req.body;
-
-    const facultyId = req.user.id;
-
-    if (!studentId || !date || !hour) {
-      return res.status(400).json({
-        message: "studentId, date and hour are required",
-      });
-    }
-
-    const attendance = await StudentAttendance.findOneAndUpdate(
-      { studentId, date, hour },
-      {
-        studentId,
-        rollNo,
-        name,
-        department,
-        year,
-        subjectCode,
-        section,
-        date,
-        hour,
-        status: "Present",
-        markedBy: facultyId,
-      },
-      { upsert: true, new: true }
-    );
-
-    return res.status(200).json({
-      message: "Student marked Present",
-      attendance,
-    });
-  } catch (error) {
-    console.error("Mark Present Error:", error);
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-/* =========================================================
-   MARK ABSENT
-========================================================= */
-export const markAbsent = async (req, res) => {
-  try {
-    const {
-      studentId,
-      rollNo,
-      name,
-      department,
-      year,
-      subjectCode,
-      section,
-      date,
-      hour,
-    } = req.body;
-
-    const facultyId = req.user.id;
-
-    if (!studentId || !date || !hour) {
-      return res.status(400).json({
-        message: "studentId, date and hour are required",
-      });
-    }
-
-    const attendance = await StudentAttendance.findOneAndUpdate(
-      { studentId, date, hour },
-      {
-        studentId,
-        rollNo,
-        name,
-        department,
-        year,
-        subjectCode,
-        section,
-        date,
-        hour,
-        status: "Absent",
-        markedBy: facultyId,
-      },
-      { upsert: true, new: true }
-    );
-
-    return res.status(200).json({
-      message: "Student marked Absent",
-      attendance,
-    });
-  } catch (error) {
-    console.error("Mark Absent Error:", error);
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-/* =========================================================
-   MARK ON-DUTY
-========================================================= */
-export const markOnDuty = async (req, res) => {
-  try {
-    const { studentId, date, hour } = req.body;
-    const facultyId = req.user.id;
-
-    if (!studentId || !date || !hour) {
-      return res.status(400).json({
-        message: "studentId, date and hour are required",
-      });
-    }
-
-    const attendance = await StudentAttendance.findOneAndUpdate(
-      { studentId, date, hour },
-      {
-        status: "On-Duty",
-        markedBy: facultyId,
-      },
-      { upsert: true, new: true }
-    );
-
-    return res.status(200).json({
-      message: "Student marked On-Duty",
-      attendance,
-    });
-  } catch (error) {
-    console.error("Mark On-Duty Error:", error);
+    console.error("Get Attendance Students Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
