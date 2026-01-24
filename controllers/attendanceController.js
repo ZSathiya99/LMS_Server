@@ -60,7 +60,6 @@ export const getAttendanceStudents = async (req, res) => {
       section = section.replace("Section ", "");
     }
 
-    // 1️⃣ Load all students
     const students = await Student.find({
       department,
       year,
@@ -69,12 +68,11 @@ export const getAttendanceStudents = async (req, res) => {
 
     let statusMap = {};
 
-    // 2️⃣ Load attendance only if date + hour exist
     if (date && hour) {
       const attendance = await StudentAttendance.find({
         subjectId: subjectId.toString().trim(),
-        date,
-        hour,
+        date: date.toString().trim(),
+        hour: hour.toString().trim(),
       });
 
       attendance.forEach(a => {
@@ -82,7 +80,6 @@ export const getAttendanceStudents = async (req, res) => {
       });
     }
 
-    // 3️⃣ Build response → DEFAULT ABSENT
     const result = students.map(s => ({
       _id: s._id,
       rollNumber: s.rollNumber,
@@ -100,5 +97,6 @@ export const getAttendanceStudents = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
