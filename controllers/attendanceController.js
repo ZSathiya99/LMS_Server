@@ -7,23 +7,17 @@ import StudentAttendance from "../models/StudentAttendance.js";
 ========================================================= */
 export const markAttendance = async (req, res) => {
   try {
-    let {
-      studentId,
-      subjectId,
-      date,
-      hour,
-      status,
-    } = req.body;
+    let { studentId, subjectId, date, hour, status } = req.body;
 
-    const staffId = req.user.facultyId;   // faculty id from JWT
+    const staffId = req.user.facultyId;
 
     if (!studentId || !subjectId || !date || !hour || !status) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    // 🔥 CLEAN IDS
-    studentId = studentId.trim();
-    subjectId = subjectId.trim();
+    // 🔥 FORCE STRING FORMAT
+    studentId = studentId.toString().trim();
+    subjectId = subjectId.toString().trim();
 
     const attendance = await StudentAttendance.findOneAndUpdate(
       { studentId, subjectId, date, hour },
@@ -33,7 +27,7 @@ export const markAttendance = async (req, res) => {
         date,
         hour,
         status,
-        markedBy: staffId,
+        markedBy: staffId.toString(),
       },
       { upsert: true, new: true }
     );
@@ -50,42 +44,35 @@ export const markAttendance = async (req, res) => {
 };
 
 
+
 /* =========================================================
    GET — STUDENT LIST WITH STATUS (DEFAULT ABSENT)
 ========================================================= */
 export const getAttendanceStudents = async (req, res) => {
   try {
-    let {
-      department,
-      year,
-      section,
-      subjectId,
-      date,
-      hour,
-    } = req.query;
+    let { department, year, section, subjectId, date, hour } = req.query;
 
     if (!department || !year || !section || !subjectId) {
       return res.status(400).json({ message: "Missing query parameters" });
     }
 
-    // 🔥 Normalize section value
     if (section.startsWith("Section ")) {
       section = section.replace("Section ", "");
     }
 
-    // 1️⃣ Get all students of class
+    // 1️⃣ Load all students
     const students = await Student.find({
       department,
       year,
       section,
     }).sort({ rollNumber: 1 });
 
-    // 2️⃣ Attendance map (only if date & hour selected)
     let statusMap = {};
 
+    // 2️⃣ Load attendance only if date + hour exist
     if (date && hour) {
       const attendance = await StudentAttendance.find({
-        subjectId: subjectId.trim(),
+        subjectId: subjectId.toString().trim(),
         date,
         hour,
       });
@@ -113,4 +100,5 @@ export const getAttendanceStudents = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
