@@ -51,6 +51,58 @@ export const markAttendance = async (req, res) => {
 };
 
 
+//bulk 
+export const markBulkAttendance = async (req, res) => {
+  try {
+    const { subjectId, date, hour, records } = req.body;
+
+    const staffId = req.user.facultyId;
+
+    if (!subjectId || !date || !hour || !records?.length) {
+      return res.status(400).json({ message: "Required fields missing" });
+    }
+
+    // 🔥 Force YYYY-MM-DD format
+    const formattedDate = new Date(date).toISOString().split("T")[0];
+
+    const bulkOps = records.map((rec) => ({
+      updateOne: {
+        filter: {
+          studentId: rec.studentId.toString().trim(),
+          subjectId: subjectId.toString().trim(),
+          date: formattedDate,
+          hour,
+        },
+        update: {
+          $set: {
+            studentId: rec.studentId.toString().trim(),
+            subjectId: subjectId.toString().trim(),
+            date: formattedDate,
+            hour,
+            status: rec.status,
+            markedBy: staffId.toString(),
+          },
+        },
+        upsert: true,
+      },
+    }));
+
+    await StudentAttendance.bulkWrite(bulkOps);
+
+    return res.status(200).json({
+      message: "Attendance saved successfully",
+      total: records.length,
+    });
+
+  } catch (error) {
+    console.error("Bulk Attendance Error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
 
 //Date-wise Attendance Filter API
 
