@@ -87,18 +87,7 @@ export const getClassTimetable = async (req, res) => {
       return res.status(400).json({ message: "Missing query params" });
     }
 
-    const timetable = await Timetable.findOne({
-      department,
-      year,
-      semester: Number(semester),
-      section,
-    });
-
-    if (!timetable) {
-      return res.json({});
-    }
-
-    // 🔥 ALL POSSIBLE TIME SLOTS (FIXED GRID)
+    // 🔥 Fixed grid definition
     const TIME_SLOTS = [
       "08:40AM - 09:35AM",
       "09:35AM - 10:30AM",
@@ -118,7 +107,7 @@ export const getClassTimetable = async (req, res) => {
       "Saturday",
     ];
 
-    // 🔥 INIT GRID STRUCTURE
+    // 🔥 Always create default grid
     const grid = {};
 
     TIME_SLOTS.forEach((time) => {
@@ -128,29 +117,39 @@ export const getClassTimetable = async (req, res) => {
       });
     });
 
-    // 🔥 FILL GRID FROM DB
-    timetable.days.forEach((dayObj) => {
-      const day = dayObj.day;
-
-      dayObj.slots.forEach((slot) => {
-        if (grid[slot.time]) {
-          grid[slot.time][day] = {
-            subjectId: slot.subjectId,
-            subjectName: slot.subjectName,
-            facultyId: slot.facultyId,
-            facultyName: slot.facultyName,
-          };
-        }
-      });
+    // 🔥 Now fetch timetable
+    const timetable = await Timetable.findOne({
+      department,
+      year,
+      semester: Number(semester),
+      section,
     });
 
+    // 🔥 If found → fill grid
+    if (timetable) {
+      timetable.days.forEach((dayObj) => {
+        dayObj.slots.forEach((slot) => {
+          if (grid[slot.time]) {
+            grid[slot.time][dayObj.day] = {
+              subjectId: slot.subjectId,
+              subjectName: slot.subjectName,
+              facultyId: slot.facultyId,
+              facultyName: slot.facultyName,
+            };
+          }
+        });
+      });
+    }
+
+    // 🔥 Always return grid (even if empty)
     return res.status(200).json(grid);
 
   } catch (error) {
-    console.error("Get Timetable Error:", error);
+    console.error("Get Class Timetable Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 //GET STAFF TIMETABLE (Faculty Login View)
