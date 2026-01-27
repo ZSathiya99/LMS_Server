@@ -7,7 +7,7 @@ import {
   getAllFaculty,
   getDepartmentWise,
   getDashboardStats,
-  getDepartmentWiseFaculty,
+  getDepartmentWiseFaculty,getDepartmentWiseFacultyList
 } from "../controllers/facultyController.js";
 
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -59,5 +59,10 @@ router.get("/stats", getDashboardStats);
 
 // 🧑‍🏫 Faculty list for specific department
 router.get("/department-wise/:department", getDepartmentWiseFaculty);
+
+//department wise faculty list 
+
+router.get("/department/:department", verifyToken, getDepartmentWiseFacultyList);
+
 
 export default router;

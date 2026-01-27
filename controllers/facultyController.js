@@ -446,6 +446,36 @@ export const getDepartmentWiseFaculty = async (req, res) => {
   }
 };
 
+// depatmentgetDepartmentWiseFacultyList
+ export const getDepartmentWiseFacultyList = async (req, res) => {
+  try {
+    const { department } = req.params;
+
+    if (!department) {
+      return res.status(400).json({ message: "Department is required" });
+    }
+
+    const cleanDept = department.replace(/['"]+/g, "").trim();
+
+    const facultyList = await Faculty.find({
+      department: { $regex: new RegExp(`^${cleanDept}$`, "i") },
+    })
+      .select(
+        "firstName lastName email mobileNumber employeeId designation role department"
+      )
+      .sort({ firstName: 1 });
+
+    return res.status(200).json({
+      total: facultyList.length,
+      faculty: facultyList,
+    });
+
+  } catch (error) {
+    console.error("Get Department Faculty Error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 
 // ======================================================
 // ✅ DASHBOARD STATS
