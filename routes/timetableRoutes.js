@@ -8,7 +8,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Admin timetable add/update
+// hod timetable add/update
 router.post("/save", verifyToken, saveTimetableSlot);
 
 // Class timetable

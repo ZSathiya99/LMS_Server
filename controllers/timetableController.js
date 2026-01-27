@@ -90,18 +90,68 @@ export const getClassTimetable = async (req, res) => {
     const timetable = await Timetable.findOne({
       department,
       year,
-      semester: Number(semester),   // 🔥 IMPORTANT
+      semester: Number(semester),
       section,
     });
 
-    return res.status(200).json({
-      timetable: timetable || {},
+    if (!timetable) {
+      return res.json({});
+    }
+
+    // 🔥 ALL POSSIBLE TIME SLOTS (FIXED GRID)
+    const TIME_SLOTS = [
+      "08:40AM - 09:35AM",
+      "09:35AM - 10:30AM",
+      "10:30AM - 11:25AM",
+      "11:45AM - 12:40PM",
+      "01:40PM - 02:30PM",
+      "02:30PM - 03:20PM",
+      "03:20PM - 04:10PM",
+    ];
+
+    const DAYS = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    // 🔥 INIT GRID STRUCTURE
+    const grid = {};
+
+    TIME_SLOTS.forEach((time) => {
+      grid[time] = {};
+      DAYS.forEach((day) => {
+        grid[time][day] = null;
+      });
     });
 
+    // 🔥 FILL GRID FROM DB
+    timetable.days.forEach((dayObj) => {
+      const day = dayObj.day;
+
+      dayObj.slots.forEach((slot) => {
+        if (grid[slot.time]) {
+          grid[slot.time][day] = {
+            subjectId: slot.subjectId,
+            subjectName: slot.subjectName,
+            facultyId: slot.facultyId,
+            facultyName: slot.facultyName,
+          };
+        }
+      });
+    });
+
+    return res.status(200).json(grid);
+
   } catch (error) {
+    console.error("Get Timetable Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 //GET STAFF TIMETABLE (Faculty Login View)
 export const getStaffTimetable = async (req, res) => {
@@ -112,32 +162,60 @@ export const getStaffTimetable = async (req, res) => {
       "days.slots.facultyId": staffId,
     });
 
-    const result = [];
+    // 🔥 FIXED TIME GRID
+    const TIME_SLOTS = [
+      "08:40AM - 09:35AM",
+      "09:35AM - 10:30AM",
+      "10:30AM - 11:25AM",
+      "11:45AM - 12:40PM",
+      "01:40PM - 02:30PM",
+      "02:30PM - 03:20PM",
+      "03:20PM - 04:10PM",
+    ];
 
+    const DAYS = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    // 🔥 INIT GRID
+    const grid = {};
+
+    TIME_SLOTS.forEach((time) => {
+      grid[time] = {};
+      DAYS.forEach((day) => {
+        grid[time][day] = null;
+      });
+    });
+
+    // 🔥 FILL GRID FROM DB
     timetables.forEach((table) => {
-      table.days.forEach((day) => {
-        day.slots.forEach((slot) => {
+      table.days.forEach((dayObj) => {
+        dayObj.slots.forEach((slot) => {
           if (slot.facultyId.toString() === staffId.toString()) {
-            result.push({
-              department: table.department,
-              year: table.year,
-              section: table.section,
-              day: day.day,
-              time: slot.time,
-              subjectId: slot.subjectId,
-              subjectName: slot.subjectName,
-            });
+            if (grid[slot.time]) {
+              grid[slot.time][dayObj.day] = {
+                department: table.department,
+                year: table.year,
+                section: table.section,
+                subjectId: slot.subjectId,
+                subjectName: slot.subjectName,
+              };
+            }
           }
         });
       });
     });
 
-    return res.status(200).json({
-      total: result.length,
-      timetable: result,
-    });
+    return res.status(200).json(grid);
+
   } catch (error) {
     console.error("Get Staff Timetable Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
