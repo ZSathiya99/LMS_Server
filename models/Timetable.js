@@ -34,6 +34,7 @@ const TimetableSchema = new mongoose.Schema(
     department: { type: String, required: true },
     year: { type: String, required: true }, // "1st Year"
     section: { type: String, required: true }, // "Section A"
+    semester: { type: Number, required: true },   
 
     days: [DaySchema],
   },
