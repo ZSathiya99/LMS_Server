@@ -15,16 +15,23 @@ export const markAttendance = async (req, res) => {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    // 🔥 FORCE STRING FORMAT
+    // 🔥 FORCE YYYY-MM-DD FORMAT
+    const formattedDate = new Date(date).toISOString().split("T")[0];
+
     studentId = studentId.toString().trim();
     subjectId = subjectId.toString().trim();
 
     const attendance = await StudentAttendance.findOneAndUpdate(
-      { studentId, subjectId, date, hour },
       {
         studentId,
         subjectId,
-        date,
+        date: formattedDate,
+        hour,
+      },
+      {
+        studentId,
+        subjectId,
+        date: formattedDate,
         hour,
         status,
         markedBy: staffId.toString(),
@@ -40,6 +47,39 @@ export const markAttendance = async (req, res) => {
   } catch (error) {
     console.error("Mark Attendance Error:", error);
     return res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+//Date-wise Attendance Filter API
+
+export const getAttendanceByDate = async (req, res) => {
+  try {
+    const { date, subjectId, hour } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required" });
+    }
+
+    const formattedDate = new Date(date).toISOString().split("T")[0];
+
+    let filter = { date: formattedDate };
+
+    if (subjectId) filter.subjectId = subjectId;
+    if (hour) filter.hour = hour;
+
+    const attendance = await StudentAttendance.find(filter);
+
+    res.status(200).json({
+      message: "Attendance fetched successfully",
+      count: attendance.length,
+      attendance,
+    });
+
+  } catch (error) {
+    console.error("Get Attendance Error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
