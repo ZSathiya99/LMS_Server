@@ -77,6 +77,134 @@ export const saveTimetableSlot = async (req, res) => {
   }
 };
 
+//upadte
+export const updateTimetableSlot = async (req, res) => {
+  try {
+    const {
+      department,
+      year,
+      semester,
+      section,
+      day,
+      oldTime,      // 🔥 existing slot time
+      newTime,
+      subjectId,
+      subjectName,
+      facultyId,
+      facultyName,
+    } = req.body;
+
+    if (
+      !department ||
+      !year ||
+      !semester ||
+      !section ||
+      !day ||
+      !oldTime ||
+      !newTime ||
+      !subjectId ||
+      !facultyId
+    ) {
+      return res.status(400).json({ message: "Required fields missing" });
+    }
+
+    const timetable = await Timetable.findOne({
+      department,
+      year,
+      semester,
+      section,
+    });
+
+    if (!timetable) {
+      return res.status(404).json({ message: "Timetable not found" });
+    }
+
+    const dayObj = timetable.days.find((d) => d.day === day);
+    if (!dayObj) {
+      return res.status(404).json({ message: "Day not found" });
+    }
+
+    // 🔥 Remove old slot
+    dayObj.slots = dayObj.slots.filter((s) => s.time !== oldTime);
+
+    // 🔥 Add new updated slot
+    dayObj.slots.push({
+      time: newTime,
+      subjectId,
+      subjectName,
+      facultyId,
+      facultyName,
+    });
+
+    timetable.markModified("days");
+    await timetable.save();
+
+    return res.status(200).json({
+      message: "Timetable slot updated successfully",
+      timetable,
+    });
+
+  } catch (error) {
+    console.error("Update Timetable Slot Error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+//delete
+export const deleteTimetableSlot = async (req, res) => {
+  try {
+    const { department, year, semester, section, day, time } = req.body;
+
+    if (
+      !department ||
+      !year ||
+      !semester ||
+      !section ||
+      !day ||
+      !time
+    ) {
+      return res.status(400).json({ message: "Required fields missing" });
+    }
+
+    const timetable = await Timetable.findOne({
+      department,
+      year,
+      semester,
+      section,
+    });
+
+    if (!timetable) {
+      return res.status(404).json({ message: "Timetable not found" });
+    }
+
+    const dayObj = timetable.days.find((d) => d.day === day);
+    if (!dayObj) {
+      return res.status(404).json({ message: "Day not found" });
+    }
+
+    const before = dayObj.slots.length;
+
+    dayObj.slots = dayObj.slots.filter((s) => s.time !== time);
+
+    if (before === dayObj.slots.length) {
+      return res.status(404).json({ message: "Slot not found" });
+    }
+
+    timetable.markModified("days");
+    await timetable.save();
+
+    return res.status(200).json({
+      message: "Timetable slot deleted successfully",
+      timetable,
+    });
+
+  } catch (error) {
+    console.error("Delete Timetable Slot Error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+
 //GET TIMETABLE FOR CLASS (hod + Students)
 
 export const getClassTimetable = async (req, res) => {
