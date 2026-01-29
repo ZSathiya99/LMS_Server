@@ -206,7 +206,10 @@ export const editTopic = async (req, res) => {
     if (!planning)
       return res.status(404).json({ message: "Planning not found" });
 
-    const unit = planning.units.find((u) => u.unitName === unitName);
+   const unit = planning.units.find(
+  (u) => u.unitName.toLowerCase().trim() === unitName.toLowerCase().trim()
+);
+
     if (!unit)
       return res.status(404).json({ message: "Unit not found" });
 
@@ -245,7 +248,10 @@ export const deleteTopic = async (req, res) => {
     if (!planning)
       return res.status(404).json({ message: "Planning not found" });
 
-    const unit = planning.units.find((u) => u.unitName === unitName);
+    const unit = planning.units.find(
+      (u) => u.unitName.toLowerCase().trim() === unitName.toLowerCase().trim()
+    );
+
     if (!unit)
       return res.status(404).json({ message: "Unit not found" });
 
@@ -272,5 +278,6 @@ export const deleteTopic = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
