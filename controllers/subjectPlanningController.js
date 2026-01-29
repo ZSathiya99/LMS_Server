@@ -87,7 +87,7 @@ export const addNewTopic = async (req, res) => {
       referenceBook,
     } = req.body;
 
-    const staffId = req.user.id.toString();
+    const staffId = req.user.facultyId.toString(); // 🔥 FIX HERE
 
     if (
       !subjectId ||
@@ -109,7 +109,6 @@ export const addNewTopic = async (req, res) => {
       referenceBook,
     };
 
-    // Step 1 — Try to push into existing unit
     let planning = await SubjectPlanning.findOneAndUpdate(
       {
         staffId,
@@ -124,7 +123,6 @@ export const addNewTopic = async (req, res) => {
       { new: true }
     );
 
-    // Step 2 — If unit does not exist, create new unit + topic
     if (!planning) {
       planning = await SubjectPlanning.findOneAndUpdate(
         { staffId, subjectId },
@@ -154,9 +152,10 @@ export const addNewTopic = async (req, res) => {
 
 
 
+
 export const getSubjectTopics = async (req, res) => {
   try {
-    const staffId = req.user.id.toString();
+    const staffId = req.user.facultyId.toString(); // 🔥 FIX HERE
     const { subjectId } = req.params;
 
     const planning = await SubjectPlanning.findOne({
@@ -187,10 +186,11 @@ export const getSubjectTopics = async (req, res) => {
 
 
 
+
 export const editTopic = async (req, res) => {
   try {
     const { topicId } = req.params;
-    const staffId = req.user.id;
+    const staffId = req.user.facultyId; // ✅ MUST USE facultyId
 
     const {
       unitName,
@@ -206,10 +206,9 @@ export const editTopic = async (req, res) => {
     if (!planning)
       return res.status(404).json({ message: "Planning not found" });
 
-   const unit = planning.units.find(
-  (u) => u.unitName.toLowerCase().trim() === unitName.toLowerCase().trim()
-);
-
+    const unit = planning.units.find(
+      (u) => u.unitName.toLowerCase().trim() === unitName.toLowerCase().trim()
+    );
     if (!unit)
       return res.status(404).json({ message: "Unit not found" });
 
@@ -229,19 +228,22 @@ export const editTopic = async (req, res) => {
     planning.markModified("units");
     await planning.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Topic updated successfully",
       topic,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Edit Topic Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 export const deleteTopic = async (req, res) => {
   try {
     const { topicId } = req.params;
-    const staffId = req.user.id;
+    const staffId = req.user.facultyId; // ✅ MUST USE facultyId
     const { unitName } = req.body;
 
     const planning = await SubjectPlanning.findOne({ staffId });
@@ -251,14 +253,12 @@ export const deleteTopic = async (req, res) => {
     const unit = planning.units.find(
       (u) => u.unitName.toLowerCase().trim() === unitName.toLowerCase().trim()
     );
-
     if (!unit)
       return res.status(404).json({ message: "Unit not found" });
 
     const topicIndex = unit.topics.findIndex(
       (t) => t._id.toString() === topicId
     );
-
     if (topicIndex === -1)
       return res.status(404).json({ message: "Topic not found" });
 
@@ -271,13 +271,15 @@ export const deleteTopic = async (req, res) => {
     planning.markModified("units");
     await planning.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Topic deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Delete Topic Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 

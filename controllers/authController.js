@@ -41,88 +41,99 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
+    // 1. Find user
     const user = await User.findOne({ email });
     if (!user)
       return res.status(401).json({ message: "Invalid email or password" });
-console.log("Entered Password:", password);
-console.log("Stored Hash:", user.password);
 
-    // Check password
-     const isMatch = await bcrypt.compare(password, user.password);
-    
+    // 2. Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
-      return res.status(401).json({ message: "Invalid email or password1" });
+      return res.status(401).json({ message: "Invalid email or password" });
 
-    // Default response
     let extraData = {};
+    let faculty = null;
 
     // =====================================================
-    //  FACULTY LOGIN DETAILS
+    // FACULTY / HOD / DEAN LOGIN
     // =====================================================
-    if (user.role === "faculty" ||
-        user.role === "HOD" ||
-        user.role === "Dean" ||
-        user.role === "Professor" ||
-        user.role === "Assistant Professor" ||
-        user.role === "Associate Professor") 
-    {
-      const faculty = await Faculty.findOne({ email });
+    if (
+      user.role === "faculty" ||
+      user.role === "HOD" ||
+      user.role === "Dean" ||
+      user.role === "Professor" ||
+      user.role === "Assistant Professor" ||
+      user.role === "Associate Professor"
+    ) {
+      faculty = await Faculty.findOne({ email });
+
+      if (!faculty) {
+        return res.status(404).json({
+          message: "Faculty profile not found. Contact Admin.",
+        });
+      }
 
       extraData = {
-        designation: faculty?.designation || "",
-        department: faculty?.department || "",
-        employeeId: faculty?.employeeId || "",
+        designation: faculty.designation,
+        department: faculty.department,
+        employeeId: faculty.employeeId,
       };
     }
 
     // =====================================================
-    //  STUDENT LOGIN DETAILS
+    // STUDENT LOGIN
     // =====================================================
     if (user.role === "student") {
       const student = await Student.findOne({ email });
 
+      if (!student) {
+        return res.status(404).json({
+          message: "Student profile not found. Contact Admin.",
+        });
+      }
+
       extraData = {
-        registerNumber: student?.registerNumber || "",
-        rollNumber: student?.rollNumber || "",
-        department: student?.department || "",
-        year: student?.year || "",
-        section: student?.section || "",
+        registerNumber: student.registerNumber,
+        rollNumber: student.rollNumber,
+        department: student.department,
+        year: student.year,
+        section: student.section,
       };
     }
 
     // =====================================================
-    //   FINAL RESPONSE
+    // TOKEN CREATION
     // =====================================================
-// Extract department correctly based on role
-let tokenDepartment = extraData.department || ""; 
 
-res.json({
-  message: "Login successful",
-  token: generateToken(
-    user._id,
-    user.role,
-    user.name,
-    user.email,
-    user.facultyId,
-    tokenDepartment     // ⭐ send correct department
-  ),
-  user: {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    facultyId:user.facultyId,
+    const token = generateToken(
+      user._id,
+      user.role,
+      user.name,
+      user.email,
+      faculty ? faculty._id : null,   // 🔥 CRITICAL FIX
+      extraData.department || ""
+    );
 
-    role: user.role,
-    department: tokenDepartment,   // ⭐ correct department
-    ...extraData,
-  },
-});
+    // =====================================================
+    // FINAL RESPONSE
+    // =====================================================
 
-
-
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        facultyId: faculty ? faculty._id : null,   // 🔥 FIXED
+        department: extraData.department || "",
+        ...extraData,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Login Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 // =======================================
