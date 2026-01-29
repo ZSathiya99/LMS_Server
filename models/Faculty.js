@@ -59,7 +59,11 @@ const FacultySchema = new mongoose.Schema(
         "Associate Professor",
         "HOD",
         "Dean",
-        "Faculty"
+        "Faculty",
+        "Professor of Practice",
+        "Lab Technician",
+        "Department Secretary",
+        "Senior Lab Technician"
       ],
       required: true,
     },

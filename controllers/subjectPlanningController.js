@@ -203,7 +203,6 @@ export const editTopic = async (req, res) => {
     } = req.body;
 
     const planning = await SubjectPlanning.findOne({ staffId });
-
     if (!planning)
       return res.status(404).json({ message: "Planning not found" });
 
@@ -211,11 +210,12 @@ export const editTopic = async (req, res) => {
     if (!unit)
       return res.status(404).json({ message: "Unit not found" });
 
-    const topic = unit.topics.id(topicId);
+    const topic = unit.topics.find(
+      (t) => t._id.toString() === topicId
+    );
     if (!topic)
       return res.status(404).json({ message: "Topic not found" });
 
-    // Update fields
     topic.topicName = topicName ?? topic.topicName;
     topic.teachingLanguage = teachingLanguage ?? topic.teachingLanguage;
     topic.date = date ?? topic.date;
@@ -226,7 +226,7 @@ export const editTopic = async (req, res) => {
     planning.markModified("units");
     await planning.save();
 
-    res.json({
+    res.status(200).json({
       message: "Topic updated successfully",
       topic,
     });
@@ -234,6 +234,7 @@ export const editTopic = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 export const deleteTopic = async (req, res) => {
   try {
     const { topicId } = req.params;
@@ -257,7 +258,6 @@ export const deleteTopic = async (req, res) => {
 
     unit.topics.splice(topicIndex, 1);
 
-    // Re-number S.No
     unit.topics.forEach((t, index) => {
       t.sno = index + 1;
     });
@@ -265,10 +265,12 @@ export const deleteTopic = async (req, res) => {
     planning.markModified("units");
     await planning.save();
 
-    res.json({
+    res.status(200).json({
       message: "Topic deleted successfully",
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
