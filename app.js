@@ -13,6 +13,7 @@ import subjectPlanningRoutes from "./routes/subjectPlanningRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import hodRoutes from "./routes/hodRoutes.js";
 import timetableRoutes from "./routes/timetableRoutes.js";
+import classroomRoutes from "./routes/classroomRoutes.js";
 
 
 
@@ -45,6 +46,8 @@ app.use("/api", attendanceRoutes); // ✅ attendance here
 app.use("/api", hodRoutes);
 app.use("/api/students", attendanceRoutes);
 app.use("/api/timetable", timetableRoutes);
+app.use("/api", classroomRoutes);
+
 
 
 
