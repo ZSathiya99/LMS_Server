@@ -4,9 +4,9 @@ import Classroom from "../models/Classroom.js";
 export const createClassroom = async (req, res) => {
   try {
     const facultyId = req.user.facultyId; // from JWT
-    const { className, section, subjectName } = req.body;
+    const { className, section, subjectName, year } = req.body;
 
-    if (!className || !section || !subjectName) {
+    if (!className || !section || !subjectName || !year) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -15,6 +15,7 @@ export const createClassroom = async (req, res) => {
       className,
       section,
       subjectName,
+      year,   // ✅ added
     });
 
     return res.status(201).json({
@@ -26,6 +27,7 @@ export const createClassroom = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // ✅ GET ALL CLASSES OF FACULTY

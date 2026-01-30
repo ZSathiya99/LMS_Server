@@ -25,6 +25,10 @@ const ClassroomSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    year: {
+      type: String, // or Number (eg: 1,2,3,4)
+      required: true,
+    },
 
     status: {
       type: String,
@@ -32,7 +36,7 @@ const ClassroomSchema = new mongoose.Schema(
       default: "active",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("Classroom", ClassroomSchema);
