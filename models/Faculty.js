@@ -50,6 +50,11 @@ const FacultySchema = new mongoose.Schema(
       required: true,
     },
 
+    profileImage: {
+      type: String, // URL or file path
+      default: null,
+    },
+
     // Academic Position (NOT system role)
     designation: {
       type: String,
@@ -63,7 +68,7 @@ const FacultySchema = new mongoose.Schema(
         "Professor of Practice",
         "Lab Technician",
         "Department Secretary",
-        "Senior Lab Technician"
+        "Senior Lab Technician",
       ],
       required: true,
     },
@@ -80,7 +85,7 @@ const FacultySchema = new mongoose.Schema(
       degreeCertificate: String,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("Faculty", FacultySchema);

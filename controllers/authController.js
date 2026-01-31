@@ -41,29 +41,42 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Find user
+    // ================================
+    // 1. FIND USER
+    // ================================
     const user = await User.findOne({ email });
-    if (!user)
-      return res.status(401).json({ message: "Invalid email or password" });
+    if (!user) {
+      return res
+        .status(401)
+        .json({ message: "Invalid email or password" });
+    }
 
-    // 2. Compare password
+    // ================================
+    // 2. VERIFY PASSWORD
+    // ================================
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(401).json({ message: "Invalid email or password" });
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ message: "Invalid email or password" });
+    }
 
-    let extraData = {};
     let faculty = null;
+    let profileImage = null;
+    let department = "";
 
-    // =====================================================
-    // FACULTY / HOD / DEAN LOGIN
-    // =====================================================
+    // ================================
+    // 3. FACULTY / HOD / DEAN LOGIN
+    // ================================
     if (
-      user.role === "faculty" ||
-      user.role === "HOD" ||
-      user.role === "Dean" ||
-      user.role === "Professor" ||
-      user.role === "Assistant Professor" ||
-      user.role === "Associate Professor"
+      [
+        "faculty",
+        "HOD",
+        "Dean",
+        "Professor",
+        "Assistant Professor",
+        "Associate Professor",
+      ].includes(user.role)
     ) {
       faculty = await Faculty.findOne({ email });
 
@@ -73,16 +86,13 @@ export const loginUser = async (req, res) => {
         });
       }
 
-      extraData = {
-        designation: faculty.designation,
-        department: faculty.department,
-        employeeId: faculty.employeeId,
-      };
+      profileImage = faculty.profileImage || null;
+      department = faculty.department || "";
     }
 
-    // =====================================================
-    // STUDENT LOGIN
-    // =====================================================
+    // ================================
+    // 4. STUDENT LOGIN
+    // ================================
     if (user.role === "student") {
       const student = await Student.findOne({ email });
 
@@ -92,32 +102,26 @@ export const loginUser = async (req, res) => {
         });
       }
 
-      extraData = {
-        registerNumber: student.registerNumber,
-        rollNumber: student.rollNumber,
-        department: student.department,
-        year: student.year,
-        section: student.section,
-      };
+      profileImage = student.profileImage || null;
+      department = student.department || "";
     }
 
-    // =====================================================
-    // TOKEN CREATION
-    // =====================================================
-
+    // ================================
+    // 5. GENERATE TOKEN (WITH PROFILE IMAGE)
+    // ================================
     const token = generateToken(
       user._id,
       user.role,
       user.name,
       user.email,
-      faculty ? faculty._id : null,   // 🔥 CRITICAL FIX
-      extraData.department || ""
+      faculty ? faculty._id : null,
+      department,
+      profileImage
     );
 
-    // =====================================================
-    // FINAL RESPONSE
-    // =====================================================
-
+    // ================================
+    // 6. FINAL RESPONSE
+    // ================================
     return res.status(200).json({
       message: "Login successful",
       token,
@@ -126,14 +130,14 @@ export const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        facultyId: faculty ? faculty._id : null,   // 🔥 FIXED
-        department: extraData.department || "",
-        ...extraData,
+        facultyId: faculty ? faculty._id : null,
+        department,
+        profileImage, // ✅ also in response
       },
     });
   } catch (error) {
     console.error("Login Error:", error);
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: "Server error" });
   }
 };
 // =======================================

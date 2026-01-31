@@ -53,6 +53,11 @@ const studentSchema = new mongoose.Schema(
       trim: true,
     },
 
+    profileImage: {
+      type: String, // URL or file path
+      default: null,
+    },
+
     mobileNumber: {
       type: String,
       trim: true,
@@ -71,7 +76,7 @@ const studentSchema = new mongoose.Schema(
   },
   {
     timestamps: true, // createdAt, updatedAt
-  }
+  },
 );
 
 const Student = mongoose.model("Student", studentSchema);
