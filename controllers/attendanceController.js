@@ -176,7 +176,7 @@ export const getAttendanceStudents = async (req, res) => {
       _id: s._id,
       rollNumber: s.rollNumber,
       name: `${s.firstName} ${s.lastName}`,
-      status: statusMap[s._id.toString()] || "Absent",
+      status: statusMap[s._id.toString()] || "null",
     }));
 
     return res.status(200).json({
