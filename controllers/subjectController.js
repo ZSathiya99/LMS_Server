@@ -38,33 +38,55 @@ export const uploadSubjectsFromExcel = async (req, res) => {
     const sheetName = workbook.SheetNames[0];
     const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    let inserted = [];
+    const insertedSubjects = [];
+    const duplicateSubjects = [];
+
     for (const row of sheetData) {
-      const department = row.Department?.trim();
-      const code = row["Code"]?.toString().trim();       // FIXED
-      const subject = row["Subject"]?.trim();            // FIXED
+      const department = row.Department?.toString().trim();
+      const code = row.Code?.toString().trim();
+      const subject = row.Subject?.toString().trim();
 
       if (!department || !code || !subject) continue;
 
       const existing = await Subject.findOne({ code, department });
-      if (existing) continue;
 
-      const newSubject = new Subject({ code, subject, department });
-      await newSubject.save();
-      inserted.push(newSubject);
+      if (existing) {
+        duplicateSubjects.push({
+          department,
+          code,
+          subject,
+          reason: "Already subject added",
+        });
+        continue;
+      }
+
+      const newSubject = await Subject.create({
+        department,
+        code,
+        subject,
+      });
+
+      insertedSubjects.push(newSubject);
     }
 
-    res.status(201).json({
-      message: "Subjects uploaded successfully",
-      count: inserted.length,
-      subjects: inserted,
+    return res.status(201).json({
+      message:
+        duplicateSubjects.length > 0
+          ? "Some subjects already exist"
+          : "Subjects uploaded successfully",
+      insertedCount: insertedSubjects.length,
+      duplicateCount: duplicateSubjects.length,
+      insertedSubjects,
+      duplicateSubjects,
     });
 
   } catch (error) {
     console.error("Excel Upload Error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 export const getAllSubjects = async (req, res) => {
   try {
