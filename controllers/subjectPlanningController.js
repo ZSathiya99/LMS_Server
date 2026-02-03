@@ -160,30 +160,44 @@ export const editTopic = async (req, res) => {
 export const deleteTopic = async (req, res) => {
   try {
     const { topicId } = req.params;
-    const staffId = req.user.facultyId.toString();
-    const role = req.user.role;
+    const staffId = req.user.facultyId;
+    const { unitName } = req.body;
 
-    const planning = await SubjectPlanning.findOne({
-      "units.topics._id": topicId,
-    });
+    if (!unitName) {
+      return res.status(400).json({ message: "unitName is required" });
+    }
+
+    const planning = await SubjectPlanning.findOne({ staffId });
 
     if (!planning) {
+      return res.status(404).json({ message: "Planning not found" });
+    }
+
+    // 1️⃣ Find unit
+    const unit = planning.units.find(
+      u => u.unitName.toLowerCase() === unitName.toLowerCase()
+    );
+
+    if (!unit) {
+      return res.status(404).json({ message: "Unit not found" });
+    }
+
+    // 2️⃣ Find topic index
+    const topicIndex = unit.topics.findIndex(
+      t => t._id.toString() === topicId
+    );
+
+    if (topicIndex === -1) {
       return res.status(404).json({ message: "Topic not found" });
     }
 
-    if (planning.staffId !== staffId && role !== "admin" && role !== "HOD") {
-      return res.status(403).json({
-        message: "You are not allowed to delete this topic",
-      });
-    }
+    // 3️⃣ Remove topic
+    unit.topics.splice(topicIndex, 1);
 
-    for (const unit of planning.units) {
-      const topic = unit.topics.id(topicId);
-      if (topic) {
-        topic.remove();
-        break;
-      }
-    }
+    // 4️⃣ Optional: re-number sno
+    unit.topics.forEach((t, index) => {
+      t.sno = index + 1;
+    });
 
     planning.markModified("units");
     await planning.save();
@@ -191,8 +205,10 @@ export const deleteTopic = async (req, res) => {
     return res.status(200).json({
       message: "Topic deleted successfully",
     });
+
   } catch (error) {
     console.error("Delete Topic Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
