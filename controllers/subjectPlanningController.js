@@ -1,79 +1,8 @@
 import SubjectPlanning from "../models/SubjectPlanning.js";
-import AdminAllocation from "../models/adminAllocationModel.js";
-import Faculty from "../models/Faculty.js";
 
-
-// // Helper function
-// const getAcademicYear = (semester) => {
-//   if (semester === 1 || semester === 2) return "1st Year";
-//   if (semester === 3 || semester === 4) return "2nd Year";
-//   if (semester === 5 || semester === 6) return "3rd Year";
-//   if (semester === 7 || semester === 8) return "4th Year";
-//   return `${semester}th Semester`;
-// };
-
-// export const getStaffSubjectPlanning = async (req, res) => {
-//   try {
-//     const userId = req.user.id; // JWT → User ID
-
-//     const faculty = await Faculty.findOne({ userId });
-
-//     if (!faculty) {
-//       return res.status(404).json({
-//         message: "Faculty profile not found",
-//         data: [],
-//       });
-//     }
-
-//     const staffId = faculty._id;
-
-//     const allocations = await AdminAllocation.find({
-//       "subjects.sections.staff.id": staffId.toString(),
-//     });
-
-//     if (!allocations.length) {
-//       return res.status(200).json({
-//         message: "No subjects assigned",
-//         data: [],
-//       });
-//     }
-
-//     const result = [];
-
-//     allocations.forEach((allocation) => {
-//       allocation.subjects.forEach((subject) => {
-//         subject.sections.forEach((section) => {
-//           if (section.staff?.id?.toString() === staffId.toString()) {
-//             result.push({
-//               subjectId: subject._id,        // 🔥 THIS WAS MISSING
-//               subjectCode: subject.code,
-//               subjectName: subject.subject,
-//               department: allocation.department,
-//               regulation: allocation.regulation,
-//               semester: allocation.semester,
-//               semesterType: allocation.semesterType,
-//               sectionName: section.sectionName,
-//             });
-//           }
-//         });
-//       });
-//     });
-
-//     return res.status(200).json({
-//       message: "Subject planning fetched successfully",
-//       total: result.length,
-//       data: result,
-//     });
-//   } catch (error) {
-//     console.error("Subject Planning Error:", error);
-//     return res.status(500).json({ message: error.message });
-//   }
-// };
-
-
-
-
-
+/* =========================================================
+   ADD NEW TOPIC
+========================================================= */
 export const addNewTopic = async (req, res) => {
   try {
     const {
@@ -87,16 +16,9 @@ export const addNewTopic = async (req, res) => {
       referenceBook,
     } = req.body;
 
-    const staffId = req.user.facultyId.toString(); // 🔥 FIX HERE
+    const staffId = req.user.facultyId.toString();
 
-    if (
-      !subjectId ||
-      !unitName ||
-      !topicName ||
-      !teachingLanguage ||
-      !date ||
-      !hours
-    ) {
+    if (!subjectId || !unitName || !topicName || !date || !hours) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
@@ -109,6 +31,7 @@ export const addNewTopic = async (req, res) => {
       referenceBook,
     };
 
+    // Try pushing topic into existing unit
     let planning = await SubjectPlanning.findOneAndUpdate(
       {
         staffId,
@@ -116,13 +39,12 @@ export const addNewTopic = async (req, res) => {
         "units.unitName": unitName,
       },
       {
-        $push: {
-          "units.$.topics": newTopic,
-        },
+        $push: { "units.$.topics": newTopic },
       },
       { new: true }
     );
 
+    // If unit not found → create unit
     if (!planning) {
       planning = await SubjectPlanning.findOneAndUpdate(
         { staffId, subjectId },
@@ -140,7 +62,6 @@ export const addNewTopic = async (req, res) => {
 
     return res.status(201).json({
       message: "Topic added successfully",
-      unitName,
       topic: newTopic,
     });
   } catch (error) {
@@ -149,18 +70,17 @@ export const addNewTopic = async (req, res) => {
   }
 };
 
-
-
-
-
+/* =========================================================
+   GET SUBJECT TOPICS
+========================================================= */
 export const getSubjectTopics = async (req, res) => {
   try {
-    const staffId = req.user.facultyId.toString(); // 🔥 FIX HERE
+    const staffId = req.user.facultyId.toString();
     const { subjectId } = req.params;
 
     const planning = await SubjectPlanning.findOne({
       staffId,
-      subjectId: subjectId.toString(),
+      subjectId,
     });
 
     if (!planning) {
@@ -180,57 +100,53 @@ export const getSubjectTopics = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
+/* =========================================================
+   EDIT TOPIC (OWNER + ADMIN/HOD OVERRIDE)
+========================================================= */
 export const editTopic = async (req, res) => {
   try {
     const { topicId } = req.params;
-    const staffId = req.user.facultyId; // ✅ MUST USE facultyId
+    const staffId = req.user.facultyId.toString();
+    const role = req.user.role; // faculty | HOD | admin
 
-    const {
-      unitName,
-      topicName,
-      teachingLanguage,
-      date,
-      hours,
-      teachingAid,
-      referenceBook,
-    } = req.body;
+    // 🔍 Find planning containing this topic
+    const planning = await SubjectPlanning.findOne({
+      "units.topics._id": topicId,
+    });
 
-    const planning = await SubjectPlanning.findOne({ staffId });
-    if (!planning)
-      return res.status(404).json({ message: "Planning not found" });
-
-    const unit = planning.units.find(
-      (u) => u.unitName.toLowerCase().trim() === unitName.toLowerCase().trim()
-    );
-    if (!unit)
-      return res.status(404).json({ message: "Unit not found" });
-
-    const topic = unit.topics.find(
-      (t) => t._id.toString() === topicId
-    );
-    if (!topic)
+    if (!planning) {
       return res.status(404).json({ message: "Topic not found" });
+    }
 
-    topic.topicName = topicName ?? topic.topicName;
-    topic.teachingLanguage = teachingLanguage ?? topic.teachingLanguage;
-    topic.date = date ?? topic.date;
-    topic.hours = hours ?? topic.hours;
-    topic.teachingAid = teachingAid ?? topic.teachingAid;
-    topic.referenceBook = referenceBook ?? topic.referenceBook;
+    // 🔐 Ownership check
+    if (planning.staffId !== staffId && role !== "admin" && role !== "HOD") {
+      return res.status(403).json({
+        message: "You are not allowed to edit this topic",
+      });
+    }
+
+    let foundTopic = null;
+
+    for (const unit of planning.units) {
+      const topic = unit.topics.id(topicId);
+      if (topic) {
+        foundTopic = topic;
+        break;
+      }
+    }
+
+    if (!foundTopic) {
+      return res.status(404).json({ message: "Topic not found" });
+    }
+
+    Object.assign(foundTopic, req.body);
 
     planning.markModified("units");
     await planning.save();
 
     return res.status(200).json({
       message: "Topic updated successfully",
-      topic,
+      topic: foundTopic,
     });
   } catch (error) {
     console.error("Edit Topic Error:", error);
@@ -238,35 +154,36 @@ export const editTopic = async (req, res) => {
   }
 };
 
-
-
+/* =========================================================
+   DELETE TOPIC (OWNER + ADMIN/HOD OVERRIDE)
+========================================================= */
 export const deleteTopic = async (req, res) => {
   try {
     const { topicId } = req.params;
-    const staffId = req.user.facultyId; // ✅ MUST USE facultyId
-    const { unitName } = req.body;
+    const staffId = req.user.facultyId.toString();
+    const role = req.user.role;
 
-    const planning = await SubjectPlanning.findOne({ staffId });
-    if (!planning)
-      return res.status(404).json({ message: "Planning not found" });
-
-    const unit = planning.units.find(
-      (u) => u.unitName.toLowerCase().trim() === unitName.toLowerCase().trim()
-    );
-    if (!unit)
-      return res.status(404).json({ message: "Unit not found" });
-
-    const topicIndex = unit.topics.findIndex(
-      (t) => t._id.toString() === topicId
-    );
-    if (topicIndex === -1)
-      return res.status(404).json({ message: "Topic not found" });
-
-    unit.topics.splice(topicIndex, 1);
-
-    unit.topics.forEach((t, index) => {
-      t.sno = index + 1;
+    const planning = await SubjectPlanning.findOne({
+      "units.topics._id": topicId,
     });
+
+    if (!planning) {
+      return res.status(404).json({ message: "Topic not found" });
+    }
+
+    if (planning.staffId !== staffId && role !== "admin" && role !== "HOD") {
+      return res.status(403).json({
+        message: "You are not allowed to delete this topic",
+      });
+    }
+
+    for (const unit of planning.units) {
+      const topic = unit.topics.id(topicId);
+      if (topic) {
+        topic.remove();
+        break;
+      }
+    }
 
     planning.markModified("units");
     await planning.save();
@@ -279,7 +196,3 @@ export const deleteTopic = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
-
-
-
