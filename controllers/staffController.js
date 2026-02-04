@@ -15,7 +15,6 @@ export const getStaffSubjectPlanning = async (req, res) => {
   try {
     const staffId = req.user.facultyId;
 
-    // 🔥 Image list
     const imageList = [
       "/images/banner1.png",
       "/images/banner2.png",
@@ -24,7 +23,6 @@ export const getStaffSubjectPlanning = async (req, res) => {
       "/images/banner5.png",
     ];
 
-    // 🔥 Random image function
     const getRandomImage = () => {
       const randomIndex = Math.floor(Math.random() * imageList.length);
       return imageList[randomIndex];
@@ -36,10 +34,24 @@ export const getStaffSubjectPlanning = async (req, res) => {
 
     const result = [];
 
-    allocations.forEach((allocation) => {
-      allocation.subjects.forEach((subject) => {
-        subject.sections.forEach((section) => {
+    for (const allocation of allocations) {
+      let isModified = false; // track DB changes
+
+      for (const subject of allocation.subjects) {
+        for (const section of subject.sections) {
           if (section.staff?.id?.toString() === staffId.toString()) {
+
+            // 🔥 Generate classCode if not exists
+            if (!subject.classCode) {
+              const randomCode = Math.random()
+                .toString(36)
+                .substring(2, 8)
+                .toUpperCase();
+
+              subject.classCode = `${subject.code}-${randomCode}`;
+              isModified = true;
+            }
+
             result.push({
               subjectId: subject._id,
               department: allocation.department,
@@ -51,12 +63,19 @@ export const getStaffSubjectPlanning = async (req, res) => {
               subjectName: subject.subject,
               credits: subject.credits,
               sectionName: section.sectionName,
-              image: getRandomImage(), // 🔥 Random image per subject
+              classCode: subject.classCode, // 🔥 Return classCode
+              image: getRandomImage(),
             });
           }
-        });
-      });
-    });
+        }
+      }
+
+      // 🔥 Save only if modified
+      if (isModified) {
+        allocation.markModified("subjects");
+        await allocation.save();
+      }
+    }
 
     return res.status(200).json({
       total: result.length,
@@ -68,6 +87,7 @@ export const getStaffSubjectPlanning = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
