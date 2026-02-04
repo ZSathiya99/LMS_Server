@@ -12,7 +12,7 @@ const getAcademicYear = (semester) => {
 
 export const getStaffSubjectPlanning = async (req, res) => {
   try {
-    const staffId = req.user.facultyId; // faculty _id from token
+    const staffId = req.user.facultyId;
 
     const allocations = await AdminAllocation.find({
       "subjects.sections.staff.id": staffId.toString(),
@@ -33,7 +33,7 @@ export const getStaffSubjectPlanning = async (req, res) => {
               semester: allocation.semester,
               semesterType: allocation.semesterType,
 
-              year: getAcademicYear(allocation.semester), // 🔥 ADDED
+              year: getAcademicYear(allocation.semester),
 
               subjectCode: subject.code,
               subjectName: subject.subject,
@@ -46,14 +46,26 @@ export const getStaffSubjectPlanning = async (req, res) => {
       });
     });
 
+    // 🔥 Add 5 image URLs
+    const images = [
+      `${req.protocol}://${req.get("host")}/images/banner1.png`,
+      `${req.protocol}://${req.get("host")}/images/banner2.png`,
+      `${req.protocol}://${req.get("host")}/images/banner3.png`,
+      `${req.protocol}://${req.get("host")}/images/banner4.png`,
+      `${req.protocol}://${req.get("host")}/images/banner5.png`,
+    ];
+
     return res.status(200).json({
       total: result.length,
+      images,   // ✅ Added here
       data: result,
     });
+
   } catch (error) {
     console.error("Subject Planning Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 

@@ -14,6 +14,7 @@ import attendanceRoutes from "./routes/attendanceRoutes.js";
 import hodRoutes from "./routes/hodRoutes.js";
 import timetableRoutes from "./routes/timetableRoutes.js";
 import classroomRoutes from "./routes/classroomRoutes.js";
+import path from "path";
 
 
 
@@ -24,7 +25,8 @@ dotenv.config();
 connectDB();
 
 const app = express();
-
+// Serve static folder
+app.use("/images", express.static(path.join(process.cwd(), "images")));
 // CORS
 app.use(cors({
   origin: ["http://localhost:5173"],
