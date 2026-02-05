@@ -16,6 +16,8 @@ import timetableRoutes from "./routes/timetableRoutes.js";
 import classroomRoutes from "./routes/classroomRoutes.js";
 import path from "path";
 import streamStaffRoutes from "./routes/streamStaffRoutes.js";
+import assignmentRoutes from "./routes/assignmentRoutes.js";
+
 
 
 
@@ -53,6 +55,10 @@ app.use("/api/students", attendanceRoutes);
 app.use("/api/timetable", timetableRoutes);
 app.use("/api", classroomRoutes);
 app.use("/api/staff", streamStaffRoutes);
+app.use("/api", assignmentRoutes);
+app.use("/uploads", express.static("uploads"));
+
+
 
 
 

@@ -1,13 +1,15 @@
 import Stream from "../models/Stream.js";
 import mongoose from "mongoose";
 import AdminAllocation from "../models/adminAllocationModel.js";
+import fs from "fs";
+import path from "path";
 
-// ==============================
-// 🔥 CREATE STREAM POST
-// ==============================
+/* =========================================
+   🔥 CREATE STREAM POST
+========================================= */
 export const createStreamPost = async (req, res) => {
   try {
-    const { subjectId, message, attachments, link, youtubeLink } = req.body;
+    const { subjectId, message, link, youtubeLink } = req.body;
     const staffId = req.user.facultyId;
 
     if (!subjectId || !message) {
@@ -16,11 +18,22 @@ export const createStreamPost = async (req, res) => {
       });
     }
 
+    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
+      return res.status(400).json({ message: "Invalid Subject ID" });
+    }
+
+    // Convert files to full URL
+    const uploadedFiles =
+      req.files?.map(
+        (file) =>
+          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+      ) || [];
+
     const newPost = await Stream.create({
       subjectId,
       staffId,
       message,
-      attachments: attachments || [],
+      attachments: uploadedFiles,
       link: link || "",
       youtubeLink: youtubeLink || "",
     });
@@ -35,11 +48,10 @@ export const createStreamPost = async (req, res) => {
   }
 };
 
-// ==============================
-// 🔥 GET STREAM BY SUBJECT
-// ==============================
+/* =========================================
+   🔥 GET STREAM BY SUBJECT
+========================================= */
 
-// helper
 const getAcademicYear = (semester) => {
   if (semester <= 2) return "1st Year";
   if (semester <= 4) return "2nd Year";
@@ -57,9 +69,18 @@ export const getStreamBySubject = async (req, res) => {
       return res.status(400).json({ message: "Invalid Subject ID" });
     }
 
+    // 🔥 Proper nested matching using $elemMatch
     const allocation = await AdminAllocation.findOne({
-      "subjects._id": subjectId,
-      "subjects.sections.staff.id": staffId.toString(),
+      subjects: {
+        $elemMatch: {
+          _id: subjectId,
+          sections: {
+            $elemMatch: {
+              "staff.id": String(staffId),
+            },
+          },
+        },
+      },
     });
 
     if (!allocation) {
@@ -69,16 +90,15 @@ export const getStreamBySubject = async (req, res) => {
     let subjectData = null;
 
     allocation.subjects.forEach((subject) => {
-      if (subject._id.toString() === subjectId) {
+      if (String(subject._id) === String(subjectId)) {
         subject.sections.forEach((section) => {
-          if (section.staff?.id?.toString() === staffId.toString()) {
+          if (String(section.staff?.id) === String(staffId)) {
             subjectData = {
               subjectId: subject._id,
               department: allocation.department,
               regulation: allocation.regulation,
               semester: allocation.semester,
               semesterType: allocation.semesterType,
-              year: getAcademicYear(allocation.semester),
               subjectCode: subject.code,
               subjectName: subject.subject,
               sectionName: section.sectionName,
@@ -90,20 +110,11 @@ export const getStreamBySubject = async (req, res) => {
     });
 
     if (!subjectData) {
-      return res.status(404).json({ message: "Subject details not found" });
+      return res.status(404).json({
+        message: "Subject details not found",
+      });
     }
 
-    const images = [
-      "/images/banner1.png",
-      "/images/banner2.png",
-      "/images/banner3.png",
-      "/images/banner4.png",
-      "/images/banner5.png",
-    ];
-
-    const randomImage = images[Math.floor(Math.random() * images.length)];
-
-    // 🔥 Stream posts (now includes link + youtubeLink automatically)
     const streamPosts = await Stream.find({
       subjectId,
       staffId,
@@ -111,24 +122,33 @@ export const getStreamBySubject = async (req, res) => {
 
     return res.status(200).json({
       ...subjectData,
-      image: randomImage,
       totalPosts: streamPosts.length,
-      stream: streamPosts, // includes message, attachments, link, youtubeLink
+      stream: streamPosts,
     });
+
   } catch (error) {
     console.error("Get Stream Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
 
-// ==============================
-// 🔥 UPDATE STREAM POST
-// ==============================
+
+
+
+
+
+/* =========================================
+   🔥 UPDATE STREAM POST
+========================================= */
 export const updateStreamPost = async (req, res) => {
   try {
     const { streamId } = req.params;
-    const { message, attachments } = req.body;
+    const { message, link, youtubeLink } = req.body;
     const staffId = req.user.facultyId;
+
+    if (!mongoose.Types.ObjectId.isValid(streamId)) {
+      return res.status(400).json({ message: "Invalid Stream ID" });
+    }
 
     const post = await Stream.findOne({
       _id: streamId,
@@ -142,7 +162,18 @@ export const updateStreamPost = async (req, res) => {
     }
 
     if (message) post.message = message;
-    if (attachments) post.attachments = attachments;
+    if (link !== undefined) post.link = link;
+    if (youtubeLink !== undefined) post.youtubeLink = youtubeLink;
+
+    // Add new uploaded files
+    if (req.files && req.files.length > 0) {
+      const newFiles = req.files.map(
+        (file) =>
+          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+      );
+
+      post.attachments = [...post.attachments, ...newFiles];
+    }
 
     await post.save();
 
@@ -156,13 +187,17 @@ export const updateStreamPost = async (req, res) => {
   }
 };
 
-// ==============================
-// 🔥 DELETE STREAM POST
-// ==============================
+/* =========================================
+   🔥 DELETE STREAM POST
+========================================= */
 export const deleteStreamPost = async (req, res) => {
   try {
     const { streamId } = req.params;
     const staffId = req.user.facultyId;
+
+    if (!mongoose.Types.ObjectId.isValid(streamId)) {
+      return res.status(400).json({ message: "Invalid Stream ID" });
+    }
 
     const deletedPost = await Stream.findOneAndDelete({
       _id: streamId,
@@ -172,6 +207,18 @@ export const deleteStreamPost = async (req, res) => {
     if (!deletedPost) {
       return res.status(404).json({
         message: "Post not found or unauthorized",
+      });
+    }
+
+    // Delete uploaded files from server
+    if (deletedPost.attachments?.length > 0) {
+      deletedPost.attachments.forEach((fileUrl) => {
+        const filename = fileUrl.split("/uploads/")[1];
+        const filePath = path.join("uploads", filename);
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       });
     }
 

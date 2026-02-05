@@ -7,6 +7,9 @@ import {
   deleteStreamPost,
   updateStreamPost,
 } from "../controllers/streamController.js";
+import { uploadDocuments } from "../middleware/upload.js"; // ✅ FIXED
+
+
 
 const router = express.Router();
 
@@ -17,6 +20,7 @@ const router = express.Router();
 router.post(
   "/stream",
   verifyToken,
+  uploadDocuments.array("attachments", 5), // max 5 files
   createStreamPost
 );
 
