@@ -19,7 +19,6 @@ const StreamSchema = new mongoose.Schema(
       default: [],
     },
 
-    // 🔥 ADD THESE
     link: {
       type: String,
       default: "",
