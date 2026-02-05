@@ -7,7 +7,7 @@ import AdminAllocation from "../models/adminAllocationModel.js"
 // ==============================
 export const createStreamPost = async (req, res) => {
   try {
-    const { subjectId, message, attachments } = req.body;
+    const { subjectId, message, attachments, link, youtubeLink } = req.body;
     const staffId = req.user.facultyId;
 
     if (!subjectId || !message) {
@@ -21,6 +21,8 @@ export const createStreamPost = async (req, res) => {
       staffId,
       message,
       attachments: attachments || [],
+      link: link || "",
+      youtubeLink: youtubeLink || "",
     });
 
     return res.status(201).json({
@@ -32,6 +34,7 @@ export const createStreamPost = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 // ==============================
 // 🔥 GET STREAM BY SUBJECT
@@ -55,7 +58,6 @@ export const getStreamBySubject = async (req, res) => {
       return res.status(400).json({ message: "Invalid Subject ID" });
     }
 
-    // 🔥 1️⃣ Get Subject Details from Allocation
     const allocation = await AdminAllocation.findOne({
       "subjects._id": subjectId,
       "subjects.sections.staff.id": staffId.toString(),
@@ -92,7 +94,6 @@ export const getStreamBySubject = async (req, res) => {
       return res.status(404).json({ message: "Subject details not found" });
     }
 
-    // 🔥 2️⃣ Random Image
     const images = [
       "/images/banner1.png",
       "/images/banner2.png",
@@ -103,31 +104,25 @@ export const getStreamBySubject = async (req, res) => {
 
     const randomImage = images[Math.floor(Math.random() * images.length)];
 
-    // 🔥 3️⃣ Generate Class Code
-    const classCode =
-      subjectData.subjectCode +
-      "-" +
-      Math.random().toString(36).substring(2, 7).toUpperCase();
-
-    // 🔥 4️⃣ Get Stream Posts
+    // 🔥 Stream posts (now includes link + youtubeLink automatically)
     const streamPosts = await Stream.find({
       subjectId,
       staffId,
     }).sort({ createdAt: -1 });
 
-    // 🔥 5️⃣ Final Response
     return res.status(200).json({
       ...subjectData,
       image: randomImage,
-    
       totalPosts: streamPosts.length,
-      stream: streamPosts,
+      stream: streamPosts, // includes message, attachments, link, youtubeLink
     });
+
   } catch (error) {
     console.error("Get Stream Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 // ==============================
 // 🔥 UPDATE STREAM POST
