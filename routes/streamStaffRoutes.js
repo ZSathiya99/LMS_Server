@@ -41,6 +41,7 @@ router.get(
 router.put(
   "/stream/:streamId",
   verifyToken,
+  uploadDocuments.array("attachments", 5), // 🔥 IMPORTANT
   updateStreamPost
 );
 
