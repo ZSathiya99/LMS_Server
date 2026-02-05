@@ -18,7 +18,6 @@ const StreamSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-
     link: {
       type: String,
       default: "",
@@ -31,5 +30,4 @@ const StreamSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-
-export default mongoose.model("Stream", streamSchema);
+export default mongoose.model("Stream", StreamSchema);
