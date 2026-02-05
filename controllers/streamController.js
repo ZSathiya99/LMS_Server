@@ -1,6 +1,6 @@
 import Stream from "../models/Stream.js";
 import mongoose from "mongoose";
-import AdminAllocation from "../models/adminAllocationModel.js"
+import AdminAllocation from "../models/adminAllocationModel.js";
 
 // ==============================
 // 🔥 CREATE STREAM POST
@@ -34,7 +34,6 @@ export const createStreamPost = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
 
 // ==============================
 // 🔥 GET STREAM BY SUBJECT
@@ -116,13 +115,11 @@ export const getStreamBySubject = async (req, res) => {
       totalPosts: streamPosts.length,
       stream: streamPosts, // includes message, attachments, link, youtubeLink
     });
-
   } catch (error) {
     console.error("Get Stream Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
-
 
 // ==============================
 // 🔥 UPDATE STREAM POST
