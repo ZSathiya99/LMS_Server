@@ -305,6 +305,11 @@ export const getHodDashboardData = async (req, res) => {
 // ✔ POST → Assign staff
 // ✔ PUT → Update staff
 // ✔ DELETE → Remove staff
+// Generate random classroom code (6 characters)
+const generateClassroomCode = () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+};
+
 export const assignStaffToSection = async (req, res) => {
   try {
     const {
