@@ -35,20 +35,20 @@ export const getStaffSubjectPlanning = async (req, res) => {
     const result = [];
 
     for (const allocation of allocations) {
-      let isModified = false; // track DB changes
+      let isModified = false;
 
       for (const subject of allocation.subjects) {
         for (const section of subject.sections) {
           if (section.staff?.id?.toString() === staffId.toString()) {
 
-            // 🔥 Generate classCode if not exists
-            if (!subject.classCode) {
+            // ✅ CHECK classroomCode INSIDE SECTION
+            if (!section.classroomCode) {
               const randomCode = Math.random()
                 .toString(36)
                 .substring(2, 8)
                 .toUpperCase();
 
-              subject.classCode = `${subject.code}-${randomCode}`;
+              section.classroomCode = `${subject.code}-${randomCode}`;
               isModified = true;
             }
 
@@ -61,15 +61,14 @@ export const getStaffSubjectPlanning = async (req, res) => {
               year: getAcademicYear(allocation.semester),
               subjectCode: subject.code,
               subjectName: subject.subject,
-              credits: subject.credits,
               sectionName: section.sectionName,
+              classroomCode: section.classroomCode, // ✅ RETURN THIS
               image: getRandomImage(),
             });
           }
         }
       }
 
-      // 🔥 Save only if modified
       if (isModified) {
         allocation.markModified("subjects");
         await allocation.save();
@@ -86,6 +85,7 @@ export const getStaffSubjectPlanning = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 

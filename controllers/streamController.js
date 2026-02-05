@@ -81,6 +81,7 @@ export const getStreamBySubject = async (req, res) => {
               subjectCode: subject.code,
               subjectName: subject.subject,
               sectionName: section.sectionName,
+              classroomCode: section.classroomCode,
             };
           }
         });
