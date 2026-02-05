@@ -1,28 +1,103 @@
 import mongoose from "mongoose";
 
-const streamSchema = new mongoose.Schema(
+/* =========================================
+   🔥 COMMENT SCHEMA
+========================================= */
+const CommentSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+    },
+
+    role: {
+      type: String,
+      enum: ["staff", "student"], // 🔥 restrict values
+      required: true,
+    },
+
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    profileImg: {
+      type: String,
+      default: "",
+    },
+
+    comment: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true, // 🔥 adds createdAt & updatedAt for comments
+  }
+);
+
+
+/* =========================================
+   🔥 STREAM SCHEMA
+========================================= */
+const StreamSchema = new mongoose.Schema(
   {
     subjectId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: "Subject",
+      index: true,
     },
+
     staffId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: "Faculty",
+      index: true,
     },
+
     message: {
       type: String,
       required: true,
+      trim: true,
     },
-    attachments: [
-      {
-        type: String, // store file URL or link
-      },
-    ],
+
+    attachments: {
+      type: [String], // store file URLs
+      default: [],
+    },
+
+    link: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    youtubeLink: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    comments: {
+      type: [CommentSchema],
+      default: [],
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true, // 🔥 adds createdAt & updatedAt for stream
+  }
 );
 
-export default mongoose.model("Stream", streamSchema);
+
+/* =========================================
+   🔥 INDEXES (Performance Optimization)
+========================================= */
+
+// For faster fetching by subject + staff
+StreamSchema.index({ subjectId: 1, staffId: 1 });
+
+// For faster comment lookup (optional)
+StreamSchema.index({ "comments.userId": 1 });
+
+export default mongoose.model("Stream", StreamSchema);

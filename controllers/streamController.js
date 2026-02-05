@@ -21,6 +21,7 @@ export const createStreamPost = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(subjectId)) {
       return res.status(400).json({ message: "Invalid Subject ID" });
     }
+    
 
     // Convert files to full URL
     const uploadedFiles =
@@ -69,56 +70,82 @@ export const getStreamBySubject = async (req, res) => {
       return res.status(400).json({ message: "Invalid Subject ID" });
     }
 
-    // 🔥 Proper nested matching using $elemMatch
-    const allocation = await AdminAllocation.findOne({
-      subjects: {
-        $elemMatch: {
-          _id: subjectId,
-          sections: {
-            $elemMatch: {
-              "staff.id": String(staffId),
+    // 🔥 Find allocation using projection (faster)
+    const allocation = await AdminAllocation.findOne(
+      {
+        subjects: {
+          $elemMatch: {
+            _id: subjectId,
+            sections: {
+              $elemMatch: {
+                "staff.id": String(staffId),
+              },
             },
           },
         },
       },
-    });
+      {
+        department: 1,
+        regulation: 1,
+        semester: 1,
+        semesterType: 1,
+        subjects: 1,
+      }
+    );
 
     if (!allocation) {
       return res.status(404).json({ message: "Subject not found" });
     }
 
-    let subjectData = null;
+    // 🔥 Find subject + section directly
+    const subject = allocation.subjects.find(
+      (sub) => String(sub._id) === String(subjectId)
+    );
 
-    allocation.subjects.forEach((subject) => {
-      if (String(subject._id) === String(subjectId)) {
-        subject.sections.forEach((section) => {
-          if (String(section.staff?.id) === String(staffId)) {
-            subjectData = {
-              subjectId: subject._id,
-              department: allocation.department,
-              regulation: allocation.regulation,
-              semester: allocation.semester,
-              semesterType: allocation.semesterType,
-              subjectCode: subject.code,
-              subjectName: subject.subject,
-              sectionName: section.sectionName,
-              classroomCode: section.classroomCode,
-            };
-          }
-        });
-      }
-    });
-
-    if (!subjectData) {
+    if (!subject) {
       return res.status(404).json({
         message: "Subject details not found",
       });
     }
 
+    const section = subject.sections.find(
+      (sec) => String(sec.staff?.id) === String(staffId)
+    );
+
+    if (!section) {
+      return res.status(404).json({
+        message: "Section not found for this staff",
+      });
+    }
+
+    const subjectData = {
+      subjectId: subject._id,
+      department: allocation.department,
+      regulation: allocation.regulation,
+      semester: allocation.semester,
+      semesterType: allocation.semesterType,
+      subjectCode: subject.code,
+      subjectName: subject.subject,
+      sectionName: section.sectionName,
+      classroomCode: section.classroomCode,
+    };
+
+    // 🔥 Get Stream Posts + sort comments inside each stream
     const streamPosts = await Stream.find({
       subjectId,
       staffId,
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .lean(); // faster response
+
+    // 🔥 Sort comments inside each stream (newest first)
+    streamPosts.forEach((post) => {
+      if (post.comments?.length > 0) {
+        post.comments.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+      }
+    });
 
     return res.status(200).json({
       ...subjectData,
@@ -131,6 +158,7 @@ export const getStreamBySubject = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
@@ -227,6 +255,88 @@ export const deleteStreamPost = async (req, res) => {
     });
   } catch (error) {
     console.error("Delete Stream Error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+export const addCommentToStream = async (req, res) => {
+  try {
+    const { streamId } = req.params;
+    const { comment } = req.body;
+
+    let role = req.user.role;
+
+    if (role === "faculty") {
+      role = "staff";
+    }
+
+    const stream = await Stream.findById(streamId);
+
+    if (!stream) {
+      return res.status(404).json({ message: "Stream not found" });
+    }
+
+    stream.comments.push({
+      userId: req.user.id,
+      role,
+      name: req.user.name,
+      profileImg: req.user.profileImg || "",
+      comment,
+    });
+
+    await stream.save();
+
+    return res.status(200).json({
+      message: "Comment added successfully",
+      data: stream.comments,
+    });
+
+  } catch (error) {
+    console.error("Add Comment Error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteCommentFromStream = async (req, res) => {
+  try {
+    const { streamId, commentId } = req.params;
+    const userId = req.user.id;
+    const role = req.user.role;
+
+    if (!mongoose.Types.ObjectId.isValid(streamId) ||
+        !mongoose.Types.ObjectId.isValid(commentId)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+
+    const stream = await Stream.findById(streamId);
+
+    if (!stream) {
+      return res.status(404).json({ message: "Stream not found" });
+    }
+
+    const comment = stream.comments.id(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    // 🔥 Permission check
+    if (role === "student" && String(comment.userId) !== String(userId)) {
+      return res.status(403).json({
+        message: "You can only delete your own comment",
+      });
+    }
+
+    // Staff can delete any comment
+    comment.deleteOne();
+
+    await stream.save();
+
+    return res.status(200).json({
+      message: "Comment deleted successfully",
+    });
+
+  } catch (error) {
+    console.error("Delete Comment Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };

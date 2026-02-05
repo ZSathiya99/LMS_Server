@@ -5,7 +5,7 @@ import {
   createStreamPost,
   getStreamBySubject,
   deleteStreamPost,
-  updateStreamPost,
+  updateStreamPost,addCommentToStream,deleteCommentFromStream,
 } from "../controllers/streamController.js";
 import { uploadDocuments } from "../middleware/upload.js"; // ✅ FIXED
 
@@ -52,6 +52,18 @@ router.delete(
   "/stream/:streamId",
   verifyToken,
   deleteStreamPost
+);     
+
+router.post(
+  "/stream/:streamId/comment",
+  verifyToken,
+  addCommentToStream
 );
+router.delete(
+  "/stream/:streamId/comment/:commentId",
+  verifyToken,
+  deleteCommentFromStream
+);
+
 
 export default router;
