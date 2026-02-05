@@ -318,9 +318,6 @@ export const assignStaffToSection = async (req, res) => {
       staffId,
     } = req.body;
 
-    // console.log("BODY RECEIVED:", req.body);
-
-    // Validation
     if (
       !department ||
       !subjectType ||
@@ -334,15 +331,14 @@ export const assignStaffToSection = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Fetch staff details
     const staff = await Faculty.findById(staffId).select(
       "firstName lastName email profileImg"
     );
-    if (!staff) return res.status(404).json({ message: "Staff not found" });
+    if (!staff)
+      return res.status(404).json({ message: "Staff not found" });
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
-    // Find Allocation
     const allocation = await AdminAllocation.findOne({
       department: { $regex: safe(department), $options: "i" },
       subjectType: { $regex: safe(subjectType), $options: "i" },
@@ -351,25 +347,26 @@ export const assignStaffToSection = async (req, res) => {
       regulation: { $regex: safe(regulation.toString()), $options: "i" },
     });
 
-    if (!allocation) {
+    if (!allocation)
       return res.status(404).json({ message: "Allocation not found" });
-    }
 
-    // Find subject
     const subject = allocation.subjects.id(subjectId);
-    if (!subject) return res.status(404).json({ message: "Subject not found" });
+    if (!subject)
+      return res.status(404).json({ message: "Subject not found" });
 
-    // Find existing section
     let section = subject.sections.find(
       (sec) => sec.sectionName === sectionName
     );
 
     // -------------------------
-    // FIRST TIME → CREATE + ASSIGN STAFF
+    // FIRST TIME → CREATE SECTION + CLASSROOM CODE
     // -------------------------
     if (!section) {
+      const classroomCode = generateClassroomCode();
+
       section = {
         sectionName,
+        classroomCode, // 🔥 Added classroom code
         staff: {
           id: staffId,
           name: `${staff.firstName} ${staff.lastName}`,
@@ -387,12 +384,13 @@ export const assignStaffToSection = async (req, res) => {
         message: "Section created and staff assigned successfully",
         subjectId,
         sectionName,
+        classroomCode, // 🔥 Sending classroom code
         section,
       });
     }
 
     // -------------------------
-    // SECOND TIME → UPDATE STAFF
+    // SECOND TIME → UPDATE STAFF ONLY
     // -------------------------
     section.staff = {
       id: staffId,
@@ -408,6 +406,7 @@ export const assignStaffToSection = async (req, res) => {
       message: "Staff updated successfully",
       subjectId,
       sectionName,
+      classroomCode: section.classroomCode, // 🔥 Return existing code
       staff: section.staff,
     });
   } catch (error) {
@@ -415,6 +414,7 @@ export const assignStaffToSection = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 export const updateStaffForSection = async (req, res) => {

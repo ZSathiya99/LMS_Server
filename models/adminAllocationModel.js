@@ -15,6 +15,14 @@ const StaffSchema = new mongoose.Schema(
 const SectionSchema = new mongoose.Schema(
   {
     sectionName: String,
+
+    // 🔥 ADD THIS
+    classroomCode: {
+      type: String,
+      unique: true,   // optional but recommended
+      sparse: true    // prevents unique error if null
+    },
+
     staff: { type: StaffSchema, default: {} }
   },
   { _id: true }

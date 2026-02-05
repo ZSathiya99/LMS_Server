@@ -63,7 +63,6 @@ export const getStaffSubjectPlanning = async (req, res) => {
               subjectName: subject.subject,
               credits: subject.credits,
               sectionName: section.sectionName,
-              classCode: subject.classCode, // 🔥 Return classCode
               image: getRandomImage(),
             });
           }

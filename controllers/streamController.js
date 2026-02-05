@@ -118,7 +118,7 @@ export const getStreamBySubject = async (req, res) => {
     return res.status(200).json({
       ...subjectData,
       image: randomImage,
-      classCode,
+    
       totalPosts: streamPosts.length,
       stream: streamPosts,
     });
