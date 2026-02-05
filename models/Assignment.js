@@ -20,7 +20,7 @@ const AssignmentSchema = new mongoose.Schema(
       default: "",
     },
     attachments: {
-      type: [String],
+      type: [String],   // ✅ Good for storing file URLs
       default: [],
     },
     link: {

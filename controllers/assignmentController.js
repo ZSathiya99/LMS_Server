@@ -6,19 +6,11 @@ import Assignment from "../models/Assignment.js";
 ===================================================== */
 export const createAssignment = async (req, res) => {
   try {
-    const {
-      subjectId,
-      title,
-      instruction,
-      attachments,
-      link,
-      youtubeLink,
-      dueDate,
-    } = req.body;
+    const { subjectId, title, instruction, link, youtubeLink, dueDate } =
+      req.body;
 
     const staffId = req.user.facultyId;
 
-    // Validation
     if (!subjectId || !title || !dueDate) {
       return res.status(400).json({
         message: "Subject ID, title and due date are required",
@@ -29,12 +21,19 @@ export const createAssignment = async (req, res) => {
       return res.status(400).json({ message: "Invalid Subject ID" });
     }
 
+    // 🔥 Handle uploaded files
+    const uploadedFiles =
+      req.files?.map(
+        (file) =>
+          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+      ) || [];
+
     const newAssignment = await Assignment.create({
       subjectId,
       staffId,
       title,
       instruction: instruction || "",
-      attachments: attachments || [],
+      attachments: uploadedFiles, // from multer
       link: link || "",
       youtubeLink: youtubeLink || "",
       dueDate,
@@ -49,6 +48,7 @@ export const createAssignment = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 /* =====================================================
