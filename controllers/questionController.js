@@ -16,9 +16,9 @@ export const createQuestion = async (req, res) => {
       questionType,
       instruction,
       dueDate,
-      assignTo,
       link,
       youtubeLink,
+      options, // <-- get options
     } = req.body;
 
     if (!subjectId || !title || !questionType) {
@@ -31,6 +31,28 @@ export const createQuestion = async (req, res) => {
       ? req.files.map((file) => file.filename)
       : [];
 
+    let formattedOptions = [];
+
+    // ✅ If MCQ type
+    if (
+      questionType === "Single Choice" ||
+      questionType === "Multiple Choice"
+    ) {
+      if (!options) {
+        return res.status(400).json({
+          message: "Options are required for choice questions",
+        });
+      }
+
+      // if options coming as JSON string (from form-data)
+      const parsedOptions =
+        typeof options === "string" ? JSON.parse(options) : options;
+
+      formattedOptions = parsedOptions.map((opt) => ({
+        text: opt,
+      }));
+    }
+
     const question = await Question.create({
       subjectId,
       staffId,
@@ -38,10 +60,10 @@ export const createQuestion = async (req, res) => {
       questionType,
       instruction,
       attachments,
+      options: formattedOptions,
       link,
       youtubeLink,
       dueDate,
-      assignTo,
     });
 
     res.status(201).json({
@@ -52,6 +74,7 @@ export const createQuestion = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
@@ -99,7 +122,7 @@ export const getSingleQuestion = async (req, res) => {
 
 
 // ======================================================
-// ✅ PUT - Update Question (Form-Data)
+// ✅ PUT - Update Question (Form-Data + Options Support)
 // ======================================================
 export const updateQuestion = async (req, res) => {
   try {
@@ -112,6 +135,7 @@ export const updateQuestion = async (req, res) => {
       return res.status(404).json({ message: "Question not found" });
     }
 
+    // Only creator can update
     if (question.staffId.toString() !== staffId.toString()) {
       return res.status(403).json({ message: "Unauthorized" });
     }
@@ -121,22 +145,59 @@ export const updateQuestion = async (req, res) => {
       questionType,
       instruction,
       dueDate,
-      assignTo,
       link,
       youtubeLink,
+      options,
     } = req.body;
 
+    // ===============================
+    // ✅ Basic Field Updates
+    // ===============================
     if (title) question.title = title;
-    if (questionType) question.questionType = questionType;
     if (instruction) question.instruction = instruction;
     if (dueDate) question.dueDate = dueDate;
-    if (assignTo) question.assignTo = assignTo;
 
-    // ✅ NEW FIELDS
     if (link !== undefined) question.link = link;
     if (youtubeLink !== undefined) question.youtubeLink = youtubeLink;
 
-    // If new files uploaded
+    // ===============================
+    // ✅ Handle Question Type Change
+    // ===============================
+    if (questionType) {
+      question.questionType = questionType;
+    }
+
+    // ===============================
+    // ✅ Handle Options (MCQ)
+    // ===============================
+    if (
+      question.questionType === "Single Choice" ||
+      question.questionType === "Multiple Choice"
+    ) {
+      if (options) {
+        let parsedOptions;
+
+        try {
+          parsedOptions =
+            typeof options === "string" ? JSON.parse(options) : options;
+        } catch (err) {
+          return res.status(400).json({
+            message: "Options must be valid JSON array",
+          });
+        }
+
+        question.options = parsedOptions.map((opt) => ({
+          text: opt,
+        }));
+      }
+    } else {
+      // If changed to Descriptive → remove options
+      question.options = [];
+    }
+
+    // ===============================
+    // ✅ File Update (Replace Files)
+    // ===============================
     if (req.files && req.files.length > 0) {
       const newFiles = req.files.map((file) => file.filename);
       question.attachments = newFiles;
@@ -148,10 +209,12 @@ export const updateQuestion = async (req, res) => {
       message: "Question updated successfully",
       data: question,
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 

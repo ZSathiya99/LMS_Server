@@ -5,50 +5,38 @@ const questionSchema = new mongoose.Schema(
     subjectId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: "Subject",
     },
     staffId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: "Faculty",
     },
     title: {
       type: String,
       required: true,
-      trim: true,
     },
     questionType: {
       type: String,
+      enum: ["Single Choice", "Multiple Choice"],
       required: true,
-      enum: ["MCQ", "Descriptive", "True/False", "Short Answer"],
     },
-    instruction: {
-      type: String,
-      default: "",
-    },
-    attachments: [
+    instruction: String,
+    attachments: [String],
+
+    // ✅ OPTIONS FIELD
+    options: [
       {
-        type: String, // store file URL or file name
+        text: {
+          type: String,
+        },
       },
     ],
-    dueDate: {
-      type: Date,
-    },
-    assignTo: {
-      type: String,
-      default: "All Students",
-    },
-    link: {
-      type: String,
-      default: "",
-    },
 
-    youtubeLink: {
-      type: String,
-      default: "",
-    },
+    link: String,
+    youtubeLink: String,
+    dueDate: Date,
   },
-  { timestamps: true },
+  { timestamps: true }
 );
+
 
 export default mongoose.model("Question", questionSchema);
