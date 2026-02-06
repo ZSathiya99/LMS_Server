@@ -17,7 +17,9 @@ import classroomRoutes from "./routes/classroomRoutes.js";
 import path from "path";
 import streamStaffRoutes from "./routes/streamStaffRoutes.js";
 import assignmentRoutes from "./routes/assignmentRoutes.js";
-import questionRoutes from './routes/questionRoutes.js'
+import questionRoutes from './routes/questionRoutes.js';
+import materialRoutes from "./routes/materialRoutes.js";
+
 
 
 
@@ -59,6 +61,7 @@ app.use("/api/staff", streamStaffRoutes);
 app.use("/api", assignmentRoutes);
 app.use("/api", questionRoutes);
 app.use("/uploads", express.static("uploads"));
+app.use("/api", materialRoutes);
 
 
 
