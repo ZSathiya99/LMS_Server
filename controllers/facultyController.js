@@ -324,7 +324,7 @@ designation = desMap[designation.toLowerCase()] || "Faculty";
             name: `${firstName} ${lastName}`.trim() || email,
             email: cleanEmail,
 
-            password: rawPwd, // plain here: model pre-save will hash
+            password: rawPwd, // plain here: model pre-save will 
             role: role.trim().toLowerCase(),
 
           });
