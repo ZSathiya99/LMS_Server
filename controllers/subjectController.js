@@ -36,19 +36,32 @@ export const uploadSubjectsFromExcel = async (req, res) => {
 
     const workbook = XLSX.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
-    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    const sheetData = XLSX.utils.sheet_to_json(
+      workbook.Sheets[sheetName],
+      { defval: "" } // prevents undefined values
+    );
+
+    if (!sheetData.length) {
+      return res.status(400).json({ message: "Excel file is empty" });
+    }
 
     const insertedSubjects = [];
     const duplicateSubjects = [];
 
     for (const row of sheetData) {
-      const department = row.Department?.toString().trim();
-      const code = row.Code?.toString().trim();
-      const subject = row.Subject?.toString().trim();
+
+      // ✅ MATCH YOUR LOWERCASE HEADERS
+      const department = row.department?.toString().trim();
+      const code = row.code?.toString().trim();
+      const subject = row.subject?.toString().trim();
 
       if (!department || !code || !subject) continue;
 
-      const existing = await Subject.findOne({ code, department });
+      const existing = await Subject.findOne({
+        code,
+        department,
+      });
 
       if (existing) {
         duplicateSubjects.push({
@@ -85,6 +98,7 @@ export const uploadSubjectsFromExcel = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 

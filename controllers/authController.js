@@ -42,43 +42,53 @@ export const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     // ================================
-    // 1. FIND USER
+    // 1️⃣ VALIDATE INPUT
     // ================================
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email or password" });
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password are required",
+      });
     }
 
     // ================================
-    // 2. VERIFY PASSWORD
+    // 2️⃣ FIND USER
+    // ================================
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    // ================================
+    // 3️⃣ VERIFY PASSWORD
     // ================================
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email or password" });
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
     }
 
-    let faculty = null;
-    let profileImage = null;
+    let facultyId = null;
     let department = "";
+    let profileImage = null;
 
     // ================================
-    // 3. FACULTY / HOD / DEAN LOGIN
+    // 4️⃣ ROLE-BASED DATA FETCH
     // ================================
-    if (
-      [
-        "faculty",
-        "HOD",
-        "Dean",
-        "Professor",
-        "Assistant Professor",
-        "Associate Professor",
-      ].includes(user.role)
-    ) {
-      faculty = await Faculty.findOne({ email });
+
+    if (user.role === "admin") {
+      department = "Administration";
+    }
+
+    else if (user.role === "faculty") {
+
+      const faculty = await Faculty.findOne({ email: user.email });
 
       if (!faculty) {
         return res.status(404).json({
@@ -86,15 +96,14 @@ export const loginUser = async (req, res) => {
         });
       }
 
-      profileImage = faculty.profileImage || null;
+      facultyId = faculty._id;
       department = faculty.department || "";
+      profileImage = faculty.profileImage || null;
     }
 
-    // ================================
-    // 4. STUDENT LOGIN
-    // ================================
-    if (user.role === "student") {
-      const student = await Student.findOne({ email });
+    else if (user.role === "student") {
+
+      const student = await Student.findOne({ email: user.email });
 
       if (!student) {
         return res.status(404).json({
@@ -102,25 +111,31 @@ export const loginUser = async (req, res) => {
         });
       }
 
-      profileImage = student.profileImage || null;
       department = student.department || "";
+      profileImage = student.profileImage || null;
+    }
+
+    else {
+      return res.status(403).json({
+        message: "Invalid role configuration",
+      });
     }
 
     // ================================
-    // 5. GENERATE TOKEN (WITH PROFILE IMAGE)
+    // 5️⃣ GENERATE TOKEN
     // ================================
     const token = generateToken(
       user._id,
       user.role,
       user.name,
       user.email,
-      faculty ? faculty._id : null,
+      facultyId,
       department,
       profileImage
     );
 
     // ================================
-    // 6. FINAL RESPONSE
+    // 6️⃣ SUCCESS RESPONSE
     // ================================
     return res.status(200).json({
       message: "Login successful",
@@ -130,16 +145,21 @@ export const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        facultyId: faculty ? faculty._id : null,
+        facultyId,
         department,
-        profileImage, // ✅ also in response
+        profileImage,
       },
     });
+
   } catch (error) {
     console.error("Login Error:", error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };
+
+
 // =======================================
 // FORGOT PASSWORD (Send OTP)
 // =======================================

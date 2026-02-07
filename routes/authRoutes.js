@@ -15,35 +15,43 @@ router.post("/login", loginUser);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.post("/change-password", changePassword);
-router.get("/fix-user", async (req, res) => {
-  const emails = [
+// router.get("/fix-user", async (req, res) => {
+//   const emails = [
     
-    //MECH
-    "priyasharma27@college.edu",
-    //CIVIL
-    "sathiyaraj30@college.edu",
-    //EEE
-    "arunsharma59@college.edu",
-    //CSE
-    "arunraj88@college.edu",
-    //admin
-    "sathiyavijaya1999@gmail.com",
-    //staff
-    "nishapatel0@college.edu"
-  ];
+//     //MECH
+//     "priyasharma27@college.edu",
+//     //CIVIL
+//     "sathiyaraj30@college.edu",
+//     //EEE
+//     "arunsharma59@college.edu",
+//     //CSE
+//     "arunraj88@college.edu",
+//     //admin
+//     "sathiyavijaya1999@gmail.com",
+//     //staff
+//     "nishapatel0@college.edu"
+//   ];
 
-  const users = await User.find({ email: { $in: emails } });
+//   const users = await User.find({ email: { $in: emails } });
 
-  if (users.length === 0) return res.send("No users found");
+//   if (users.length === 0) return res.send("No users found");
 
-  for (const user of users) {
-    user.password = "123456"; // will get hashed
-    await user.save();
-  }
+//   for (const user of users) {
+//     user.password = "123456"; // will get hashed
+//     await user.save();
+//   }
 
-  res.send(`Password reset for ${users.length} users.`);
+//   res.send(`Password reset for ${users.length} users.`);
+// });
+
+router.get("/reset-admin", async (req, res) => {
+  const user = await User.findOne({ email: "admin@sece.ac.in" });
+
+  user.password = "123456"; // will auto hash
+  await user.save();
+
+  res.send("Admin password reset");
 });
-
 
 
 export default router;

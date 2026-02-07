@@ -173,17 +173,22 @@ export const deleteStudent = async (req, res) => {
 // ======================================================
 export const uploadMultipleStudents = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file)
+      return res.status(400).json({ message: "No file uploaded" });
 
     const workbook = xlsx.readFile(req.file.path);
     const sheet = workbook.SheetNames[0];
     const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheet]);
 
-    if (!rows.length) return res.status(400).json({ message: "Empty Excel" });
+    if (!rows.length)
+      return res.status(400).json({ message: "Empty Excel" });
 
     let inserted = 0;
     let updated = 0;
     let students = [];
+
+    const STUDENTS_PER_SECTION = 70; // ✅ 70 per section
+    const sectionLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
     // --------------------------------------------------------
     // 1️⃣ READ + NORMALIZE EXCEL ROWS
@@ -223,7 +228,8 @@ export const uploadMultipleStudents = async (req, res) => {
 
       let mobileNumber = getNorm(normalized, "phone", "mobile") || "";
       if (!mobileNumber.trim()) {
-        mobileNumber = "9" + Math.floor(100000000 + Math.random() * 900000000);
+        mobileNumber =
+          "9" + Math.floor(100000000 + Math.random() * 900000000);
       }
 
       const rawPwd = String(getNorm(normalized, "password") || "123456");
@@ -247,12 +253,15 @@ export const uploadMultipleStudents = async (req, res) => {
     // --------------------------------------------------------
     // 2️⃣ SORT FOR CLEAN ORDER
     // --------------------------------------------------------
+
     students.sort((a, b) => a.firstName.localeCompare(b.firstName));
 
     // --------------------------------------------------------
     // 3️⃣ GROUP BY DEPARTMENT + YEAR
     // --------------------------------------------------------
+
     const group = {};
+
     for (const stu of students) {
       const key = `${stu.department}-${stu.year}`;
       if (!group[key]) group[key] = [];
@@ -260,59 +269,59 @@ export const uploadMultipleStudents = async (req, res) => {
     }
 
     // --------------------------------------------------------
-    // 4️⃣ CORRECT SECTION ALLOCATION (THE MOST IMPORTANT PART)
+    // 4️⃣ SECTION ALLOCATION (70 PER SECTION)
     // --------------------------------------------------------
-    const sectionLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
     for (const key in group) {
       const [dept, yr] = key.split("-");
 
-      // Get already existing students for this dept + year
-      const existing = await Student.find({ department: dept, year: yr })
-        .sort({ firstName: 1 });
+      // Existing students in DB
+      const existing = await Student.find({
+        department: dept,
+        year: yr,
+      }).sort({ firstName: 1 });
 
       const existingCount = existing.length;
 
-      // Students uploaded for this group
       let list = group[key];
 
-      // only those without a manual section
+      // Only auto-allocate students without manual section
       let autoList = list.filter(
         (stu) => !stu.section || stu.section.trim() === ""
       );
 
-      // keep order consistent
-      autoList.sort((a, b) => a.firstName.localeCompare(b.firstName));
-
-      const totalStudents = existingCount + autoList.length;
+      autoList.sort((a, b) =>
+        a.firstName.localeCompare(b.firstName)
+      );
 
       for (let i = 0; i < autoList.length; i++) {
-        const globalIndex = existingCount + i;   // index including existing records
-        const sectionIndex = Math.floor(globalIndex / 5); // block of 5
+        const globalIndex = existingCount + i;
+        const sectionIndex = Math.floor(
+          globalIndex / STUDENTS_PER_SECTION
+        );
 
-        // If this is the last block AND it's incomplete -> unallocated
-        const isLastBlock = sectionIndex === Math.floor((totalStudents - 1) / 5);
-        const blockStart = sectionIndex * 5;
-        const isIncompleteLastSection =
-          isLastBlock && (totalStudents - blockStart < 5);
-
-        if (isIncompleteLastSection) {
-          autoList[i].section = ""; // unallocated leftover
-        } else {
-          autoList[i].section = sectionLetters[sectionIndex] || "";
-        }
+        autoList[i].section =
+          sectionLetters[sectionIndex] || "";
       }
     }
 
     // --------------------------------------------------------
-    // 5️⃣ INSERT OR UPDATE STUDENTS IN DB
+    // 5️⃣ INSERT OR UPDATE STUDENTS
     // --------------------------------------------------------
 
     for (const stu of students) {
       const {
-        firstName, lastName, registerNumber, rollNumber,
-        department, year, section, email, mobileNumber,
-        rawPwd, hashedPassword
+        firstName,
+        lastName,
+        registerNumber,
+        rollNumber,
+        department,
+        year,
+        section,
+        email,
+        mobileNumber,
+        rawPwd,
+        hashedPassword,
       } = stu;
 
       let existingStudent = await Student.findOne({
@@ -337,6 +346,7 @@ export const uploadMultipleStudents = async (req, res) => {
         );
 
         let existingUser = await User.findOne({ email });
+
         if (existingUser) {
           existingUser.name = `${firstName} ${lastName}`;
           existingUser.password = rawPwd;
@@ -378,8 +388,9 @@ export const uploadMultipleStudents = async (req, res) => {
     // --------------------------------------------------------
     // 6️⃣ RESPONSE
     // --------------------------------------------------------
+
     res.status(200).json({
-      message: "Upload Completed (Sections allocated correctly)",
+      message: "Upload Completed (70 students per section)",
       insertedStudents: inserted,
       updatedStudents: updated,
     });
@@ -389,6 +400,7 @@ export const uploadMultipleStudents = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // ======================================================
@@ -520,10 +532,10 @@ export const getDepartmentSummary = async (req, res) => {
       .sort({ year: 1, section: 1, firstName: 1 });
 
     const yearsList = [
-      "First Year",
-      "Second Year",
-      "Third Year",
-      "Fourth Year",
+      "1st Year",
+      "2nd Year",
+      "3rd Year",
+      "4th Year",
     ];
 
     const summary = {
