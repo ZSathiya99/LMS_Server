@@ -331,7 +331,7 @@ designation = desMap[designation.toLowerCase()] || "Faculty";
           usersCreated++;
         }
       } catch (uErr) {
-        // Log user-level create/update errors but continue processing
+       
         console.error(`User create/update error for row ${i + 1} (email=${email}):`, uErr.message || uErr);
       }
     } // end for rows
