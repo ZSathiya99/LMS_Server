@@ -77,7 +77,7 @@ export const loginUser = async (req, res) => {
     let facultyId = null;
     let department = "";
     let profileImage = null;
-    let finalRole = user.role; // default role
+    let finalRole = user.role;
 
     // ================================
     // 4️⃣ ROLE BASED DATA FETCH
@@ -88,8 +88,8 @@ export const loginUser = async (req, res) => {
       department = "Administration";
     }
 
-    // 🔹 FACULTY (including HOD)
-    else if (user.role === "faculty") {
+    // 🔹 FACULTY OR HOD
+    else if (user.role === "faculty" || user.role === "HOD") {
 
       const faculty = await Faculty.findOne({ email: user.email });
 
@@ -103,9 +103,11 @@ export const loginUser = async (req, res) => {
       department = faculty.department || "";
       profileImage = faculty.profileImage || null;
 
-      // 🔥 Detect HOD by designation
+      // Optional: Sync designation with role
       if (faculty.designation === "HOD") {
-        finalRole = "hod";  // override role in token/response
+        finalRole = "HOD";
+      } else {
+        finalRole = "faculty";
       }
     }
 
@@ -153,7 +155,7 @@ export const loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: finalRole,   // 🔥 shows hod if designation is HOD
+        role: finalRole,
         facultyId,
         department,
         profileImage,
