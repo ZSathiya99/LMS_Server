@@ -1,4 +1,4 @@
-export default function buildInviteEmail({ classroomName, role, inviteLink }) {
+export default function buildInviteEmail({ subjectName, inviteLink }) {
   return `
   <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8f9fa; padding: 50px 20px; line-height: 1.5;">
     <div style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
@@ -16,7 +16,7 @@ export default function buildInviteEmail({ classroomName, role, inviteLink }) {
 
         <div style="background-color: #f1f3f4; border-radius: 8px; padding: 20px; margin-bottom: 32px; text-align: center;">
           <div style="font-size: 13px; color: #70757a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Classroom</div>
-          <div style="font-size: 20px; color: #1a73e8; font-weight: bold; margin-bottom: 12px;">${classroomName}</div>
+          <div style="font-size: 20px; color: #1a73e8; font-weight: bold; margin-bottom: 12px;">${subjectName}</div>
         </div>
 
         <div style="text-align: center;">

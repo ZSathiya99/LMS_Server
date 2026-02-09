@@ -2,9 +2,9 @@ import mongoose from 'mongoose';
 
 const ClassroomInvitationSchema = new mongoose.Schema(
   {
+    // 🔥 refers to AdminAllocation.subjects.sections._id
     classId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Classroom',
       required: true,
       index: true
     },
