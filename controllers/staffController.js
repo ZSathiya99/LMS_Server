@@ -223,7 +223,7 @@ export const sendInvitation = async (req, res) => {
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
       });
 
-      const inviteLink = `${process.env.FRONTEND_URL}/classroom/invite?token=${token}`;
+      const inviteLink = `${process.env.FRONTEND_URL}classroom/invite?token=${token}`;
       console.log(subjectFound);
       const html = buildInviteEmail({
         subjectName: subjectFound.subject,
