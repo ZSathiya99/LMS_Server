@@ -18,12 +18,20 @@ export const createQuestion = async (req, res) => {
       dueDate,
       link,
       youtubeLink,
-      options, // <-- get options
+      options,
+      marks, // 🔥 ADD
     } = req.body;
 
-    if (!subjectId || !title || !questionType) {
+    // ✅ Validation
+    if (!subjectId || !title || !questionType || !marks) {
       return res.status(400).json({
-        message: "subjectId, title and questionType are required",
+        message: "subjectId, title, questionType and marks are required",
+      });
+    }
+
+    if (Number(marks) <= 0) {
+      return res.status(400).json({
+        message: "Marks must be greater than 0",
       });
     }
 
@@ -33,7 +41,7 @@ export const createQuestion = async (req, res) => {
 
     let formattedOptions = [];
 
-    // ✅ If MCQ type
+    // ✅ MCQ handling
     if (
       questionType === "Single Choice" ||
       questionType === "Multiple Choice"
@@ -44,7 +52,6 @@ export const createQuestion = async (req, res) => {
         });
       }
 
-      // if options coming as JSON string (from form-data)
       const parsedOptions =
         typeof options === "string" ? JSON.parse(options) : options;
 
@@ -63,17 +70,19 @@ export const createQuestion = async (req, res) => {
       options: formattedOptions,
       link,
       youtubeLink,
+      marks: Number(marks), // 🔥 SAVE MARKS
       dueDate,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Question created successfully",
       data: question,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 

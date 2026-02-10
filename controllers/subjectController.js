@@ -1,9 +1,9 @@
-import Subject from "../models/subjectModel.js";
+import Subject from "../models/SubjectModel.js";
 import Faculty from "../models/Faculty.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import XLSX from "xlsx";
-import AdminAllocation from "../models/adminAllocationModel.js";
+import AdminAllocation from "../models/AdminAllocationModel.js";
 
 
 

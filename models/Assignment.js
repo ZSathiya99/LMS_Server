@@ -20,7 +20,7 @@ const AssignmentSchema = new mongoose.Schema(
       default: "",
     },
     attachments: {
-      type: [String],   // ✅ Good for storing file URLs
+      type: [String], // ✅ Good for storing file URLs
       default: [],
     },
     link: {
@@ -31,12 +31,17 @@ const AssignmentSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+     marks: {
+      type: Number,
+      required: true,
+    },
     dueDate: {
       type: Date,
       required: true,
     },
+   
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("Assignment", AssignmentSchema);

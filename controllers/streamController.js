@@ -1,6 +1,6 @@
 import Stream from "../models/Stream.js";
 import mongoose from "mongoose";
-import AdminAllocation from "../models/adminAllocationModel.js";
+import AdminAllocation from "../models/AdminAllocationModel.js";
 import fs from "fs";
 import path from "path";
 

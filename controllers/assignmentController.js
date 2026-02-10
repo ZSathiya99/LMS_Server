@@ -6,22 +6,30 @@ import Assignment from "../models/Assignment.js";
 ===================================================== */
 export const createAssignment = async (req, res) => {
   try {
-    const { subjectId, title, instruction, link, youtubeLink, dueDate } =
-      req.body;
+    const {
+      subjectId,
+      title,
+      instruction,
+      link,
+      youtubeLink,
+      dueDate,
+      marks,  // 🔥 ADD THIS
+    } = req.body;
 
     const staffId = req.user.facultyId;
 
-    if (!subjectId || !title || !dueDate) {
+    if (!subjectId || !title || !dueDate || !marks) {
       return res.status(400).json({
-        message: "Subject ID, title and due date are required",
+        message: "Subject ID, title, due date and marks are required",
       });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
-      return res.status(400).json({ message: "Invalid Subject ID" });
+    if (Number(marks) <= 0) {
+      return res.status(400).json({
+        message: "Marks must be greater than 0",
+      });
     }
 
-    // 🔥 Handle uploaded files
     const uploadedFiles =
       req.files?.map(
         (file) =>
@@ -33,9 +41,10 @@ export const createAssignment = async (req, res) => {
       staffId,
       title,
       instruction: instruction || "",
-      attachments: uploadedFiles, // from multer
+      attachments: uploadedFiles,
       link: link || "",
       youtubeLink: youtubeLink || "",
+      marks: Number(marks),   // 🔥 SAVE MARKS
       dueDate,
     });
 
@@ -48,6 +57,7 @@ export const createAssignment = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 

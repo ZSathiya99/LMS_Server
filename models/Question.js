@@ -21,6 +21,10 @@ const questionSchema = new mongoose.Schema(
     },
     instruction: String,
     attachments: [String],
+    marks: {
+      type: Number,
+      required: true,
+    },
 
     // ✅ OPTIONS FIELD
     options: [
@@ -35,8 +39,7 @@ const questionSchema = new mongoose.Schema(
     youtubeLink: String,
     dueDate: Date,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
-
 
 export default mongoose.model("Question", questionSchema);
