@@ -3,7 +3,7 @@ import Faculty from "../models/Faculty.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import XLSX from "xlsx";
-import AdminAllocation from "../models/AdminAllocationModel.js";
+// import AdminAllocation from "../models/AdminAllocationModel.js";
 
 
 
