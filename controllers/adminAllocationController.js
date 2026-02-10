@@ -1,4 +1,4 @@
-import AdminAllocation from "../models/AdminAllocationModel.js";
+import AdminAllocation from "../models/adminAllocationModel.js";
 import Faculty from "../models/Faculty.js";
 
 // ✅ POST /api/adminAllocation

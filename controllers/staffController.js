@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import AdminAllocation from '../models/AdminAllocationModel.js';
+import AdminAllocation from '../models/adminAllocationModel.js';
 import ClassroomInvitation from '../models/ClassroomInvitation.js';
 import ClassroomMember from '../models/ClassroomMembers.js';
 import { sendMail } from '../utils/sendMail.js';
