@@ -1,4 +1,4 @@
-import Subject from "../models/SubjectModel.js";
+import Subject from "../models/subjectModel.js";
 import Faculty from "../models/Faculty.js";
 import xlsx from "xlsx";
 import fs from "fs";
