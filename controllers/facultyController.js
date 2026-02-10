@@ -306,7 +306,7 @@ designation = desMap[designation.toLowerCase()] || "Faculty";
 
           if (rawPwd) userUpdate.password = rawPwd; // will be hashed by User pre-save if updated via save()
 
-          // Save update safely
+         
           // If we set password, use save() to allow pre-save hashing
           if (userUpdate.password) {
             existingUser.name = userUpdate.name || existingUser.name;
