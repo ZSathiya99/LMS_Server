@@ -45,3 +45,4 @@ const AdminAllocationSchema = new mongoose.Schema({
 });
 
 export default mongoose.model("AdminAllocation", AdminAllocationSchema);
+
