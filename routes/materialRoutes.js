@@ -1,51 +1,83 @@
 import express from "express";
-import { uploadDocuments } from "../middleware/upload.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
+import { uploadDocuments } from "../middleware/upload.js";
+
 import {
   createMaterial,
-  getMaterials,
+  getMaterialsBySubject,
   getSingleMaterial,
   updateMaterial,
   deleteMaterial,
+  addMaterialComment,
+  editMaterialComment,
+  deleteMaterialComment,
 } from "../controllers/materialController.js";
 
 const router = express.Router();
 
-// ✅ POST (form-data)
+/* =====================================================
+   MATERIAL CRUD
+===================================================== */
+
+/* CREATE MATERIAL */
 router.post(
-  "/staff/material",
+  "/material",
   verifyToken,
   uploadDocuments.array("attachments", 5),
   createMaterial
 );
 
-// ✅ GET All
+/* GET ALL MATERIALS BY SUBJECT */
 router.get(
-  "/staff/materials/:subjectId",
+  "/material/subject/:subjectId",
   verifyToken,
-  getMaterials
+  getMaterialsBySubject
 );
 
-// ✅ GET Single
+/* GET SINGLE MATERIAL */
 router.get(
-  "/staff/material/:materialId",
+  "/material/:materialId",
   verifyToken,
   getSingleMaterial
 );
 
-// ✅ PUT (form-data)
+/* UPDATE MATERIAL */
 router.put(
-  "/staff/material/:materialId",
+  "/material/:materialId",
   verifyToken,
-  uploadDocuments.array("attachments", 5),
   updateMaterial
 );
 
-// ✅ DELETE
+/* DELETE MATERIAL */
 router.delete(
-  "/staff/material/:materialId",
+  "/material/:materialId",
   verifyToken,
   deleteMaterial
+);
+
+/* =====================================================
+   COMMENTS
+===================================================== */
+
+/* ADD COMMENT */
+router.post(
+  "/material/:materialId/comment",
+  verifyToken,
+  addMaterialComment
+);
+
+/* EDIT COMMENT */
+router.put(
+  "/material/:materialId/comment/:commentId",
+  verifyToken,
+  editMaterialComment
+);
+
+/* DELETE COMMENT */
+router.delete(
+  "/material/:materialId/comment/:commentId",
+  verifyToken,
+  deleteMaterialComment
 );
 
 export default router;

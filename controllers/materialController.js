@@ -1,165 +1,251 @@
+import mongoose from "mongoose";
 import Material from "../models/Material.js";
-import fs from "fs";
-import path from "path";
 
-// ================================
-// ✅ POST (form-data)
-// ================================
+/* =====================================================
+   CREATE MATERIAL
+===================================================== */
 export const createMaterial = async (req, res) => {
   try {
-    const staffId = req.user.facultyId;
+    const {
+      subjectId,
+      title,
+      instruction,
+      link,
+      youtubeLink,
+    } = req.body;
 
-    const { subjectId, title, instruction, link, youtubeLink } = req.body;
+    const staffId = req.user.facultyId;
 
     if (!subjectId || !title) {
       return res.status(400).json({
-        message: "subjectId and title are required",
+        message: "Subject ID and title are required",
       });
     }
 
-    const attachments = req.files
-      ? req.files.map((file) => file.filename)
-      : [];
+    const uploadedFiles =
+      req.files?.map(
+        (file) =>
+          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+      ) || [];
 
     const material = await Material.create({
       subjectId,
       staffId,
       title,
-      instruction,
-      link,
-      youtubeLink,
-      attachments,
+      instruction: instruction || "",
+      attachments: uploadedFiles,
+      link: link || "",
+      youtubeLink: youtubeLink || "",
+      comments: [],
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Material created successfully",
       data: material,
     });
-
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Create Material Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
-
-// ================================
-// ✅ GET ALL
-// ================================
-export const getMaterials = async (req, res) => {
+/* =====================================================
+   GET MATERIALS BY SUBJECT
+===================================================== */
+export const getMaterialsBySubject = async (req, res) => {
   try {
     const { subjectId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
+      return res.status(400).json({ message: "Invalid Subject ID" });
+    }
 
     const materials = await Material.find({ subjectId })
       .sort({ createdAt: -1 });
 
-    res.status(200).json({
+    return res.status(200).json({
       total: materials.length,
       data: materials,
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Get Materials Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
 
-// ================================
-// ✅ GET SINGLE
-// ================================
+/* =====================================================
+   GET SINGLE MATERIAL
+===================================================== */
 export const getSingleMaterial = async (req, res) => {
   try {
     const { materialId } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(materialId)) {
+      return res.status(400).json({ message: "Invalid Material ID" });
+    }
+
     const material = await Material.findById(materialId);
 
     if (!material) {
       return res.status(404).json({ message: "Material not found" });
     }
 
-    res.status(200).json({ data: material });
-
+    return res.status(200).json(material);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
-
-// ================================
-// ✅ PUT (form-data)
-// ================================
+/* =====================================================
+   UPDATE MATERIAL
+===================================================== */
 export const updateMaterial = async (req, res) => {
   try {
     const { materialId } = req.params;
-    const staffId = req.user.facultyId;
 
-    const material = await Material.findById(materialId);
+    if (!mongoose.Types.ObjectId.isValid(materialId)) {
+      return res.status(400).json({ message: "Invalid Material ID" });
+    }
 
-    if (!material) {
+    const updated = await Material.findByIdAndUpdate(
+      materialId,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
       return res.status(404).json({ message: "Material not found" });
     }
 
-    if (material.staffId.toString() !== staffId.toString()) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
-
-    const { title, instruction, link, youtubeLink } = req.body;
-
-    if (title) material.title = title;
-    if (instruction) material.instruction = instruction;
-    if (link !== undefined) material.link = link;
-    if (youtubeLink !== undefined) material.youtubeLink = youtubeLink;
-
-    // Replace attachments if new uploaded
-    if (req.files && req.files.length > 0) {
-      material.attachments = req.files.map((file) => file.filename);
-    }
-
-    await material.save();
-
-    res.status(200).json({
+    return res.status(200).json({
       message: "Material updated successfully",
-      data: material,
+      data: updated,
     });
-
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
-
-// ================================
-// ✅ DELETE
-// ================================
+/* =====================================================
+   DELETE MATERIAL
+===================================================== */
 export const deleteMaterial = async (req, res) => {
   try {
     const { materialId } = req.params;
-    const staffId = req.user.facultyId;
+
+    if (!mongoose.Types.ObjectId.isValid(materialId)) {
+      return res.status(400).json({ message: "Invalid Material ID" });
+    }
+
+    const deleted = await Material.findByIdAndDelete(materialId);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Material not found" });
+    }
+
+    return res.status(200).json({
+      message: "Material deleted successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/* =====================================================
+   ADD COMMENT
+===================================================== */
+export const addMaterialComment = async (req, res) => {
+  try {
+    const { materialId } = req.params;
+    const { comment } = req.body;
+
+    if (!comment) {
+      return res.status(400).json({ message: "Comment required" });
+    }
 
     const material = await Material.findById(materialId);
-
     if (!material) {
       return res.status(404).json({ message: "Material not found" });
     }
 
-    if (material.staffId.toString() !== staffId.toString()) {
-      return res.status(403).json({ message: "Unauthorized" });
+    material.comments.push({
+      userId:
+        req.user.role === "faculty"
+          ? req.user.facultyId
+          : req.user.studentId,
+      userType:
+        req.user.role === "faculty" ? "staff" : "student",
+      comment,
+    });
+
+    await material.save();
+
+    return res.status(201).json({
+      message: "Comment added successfully",
+      comments: material.comments,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/* =====================================================
+   EDIT COMMENT
+===================================================== */
+export const editMaterialComment = async (req, res) => {
+  try {
+    const { materialId, commentId } = req.params;
+    const { comment } = req.body;
+
+    const material = await Material.findById(materialId);
+    if (!material) {
+      return res.status(404).json({ message: "Material not found" });
     }
 
-    // delete files from uploads folder
-    material.attachments.forEach((file) => {
-      const filePath = path.join("uploads", file);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+    const existingComment = material.comments.id(commentId);
+    if (!existingComment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    existingComment.comment = comment;
+    await material.save();
+
+    return res.status(200).json({
+      message: "Comment updated successfully",
+      comments: material.comments,
     });
-
-    await Material.findByIdAndDelete(materialId);
-
-    res.status(200).json({
-      message: "Material deleted successfully",
-    });
-
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/* =====================================================
+   DELETE COMMENT
+===================================================== */
+export const deleteMaterialComment = async (req, res) => {
+  try {
+    const { materialId, commentId } = req.params;
+
+    const material = await Material.findById(materialId);
+    if (!material) {
+      return res.status(404).json({ message: "Material not found" });
+    }
+
+    const comment = material.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    comment.deleteOne();
+    await material.save();
+
+    return res.status(200).json({
+      message: "Comment deleted successfully",
+      comments: material.comments,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
