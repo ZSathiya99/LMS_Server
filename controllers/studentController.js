@@ -11,7 +11,11 @@ const normalizeKey = (key) =>
 
 const getNorm = (normalized, ...variants) => {
   for (const v of variants) {
-    if (normalized[v] !== undefined && normalized[v] !== null && normalized[v] !== "")
+    if (
+      normalized[v] !== undefined &&
+      normalized[v] !== null &&
+      normalized[v] !== ""
+    )
       return normalized[v];
   }
   return undefined;
@@ -35,58 +39,114 @@ export const addStudent = async (req, res) => {
       password,
     } = req.body;
 
+    /* ===============================
+       1️⃣ REQUIRED VALIDATION
+    =============================== */
     if (!email || !registerNumber || !firstName || !lastName) {
       return res.status(400).json({
-        message: "email, registerNumber, firstName, lastName required",
+        message:
+          "email, registerNumber, firstName and lastName are required",
       });
     }
 
-    // Prevent duplicates
+    /* ===============================
+       2️⃣ PREVENT DUPLICATES
+    =============================== */
     const exists = await Student.findOne({
       $or: [{ email }, { registerNumber }],
     });
 
     if (exists) {
       return res.status(400).json({
-        message: "Student with this Email or Register Number already exists",
+        message:
+          "Student with this Email or Register Number already exists",
       });
     }
 
-    // Auto roll number
-    let finalRollNumber = rollNumber;
-    if (!finalRollNumber || finalRollNumber.trim() === "") {
-      const count = await Student.countDocuments({ department, year });
+    /* ===============================
+       3️⃣ HANDLE ROLL NUMBER
+    =============================== */
+
+    let finalRollNumber = rollNumber
+      ? String(rollNumber).trim()
+      : "";
+
+    // If not provided → auto generate
+    if (!finalRollNumber) {
+      const count = await Student.countDocuments({
+        department,
+        year,
+      });
+
       finalRollNumber = `R${count + 1}`;
     }
 
-    // Auto Section using SAME rule as Excel upload
-    let existing = await Student.find({ department, year }).sort({ firstName: 1 });
-    let position = existing.length; // this new student position in queue
+    // 🔥 Prevent duplicate rollNumber
+    const rollExists = await Student.findOne({
+      rollNumber: finalRollNumber,
+      department,
+      year,
+    });
 
-    const fullSections = Math.floor(position / 5);
-    const remainder = position % 5;
-
-    let finalSection = "";
-
-    if (position < 5) {
-      finalSection = "A";
-    } else if (remainder === 0) {
-      finalSection = ["A", "B", "C", "D", "E", "F"][fullSections] || "";
-    } else {
-      // leftover 1–4 → UNALLOCATED
-      finalSection = "";
+    if (rollExists) {
+      return res.status(400).json({
+        message: "Roll Number already exists",
+      });
     }
 
-    // Auto mobile
-    let finalMobile = mobileNumber;
-    if (!finalMobile || finalMobile.trim() === "") {
+    /* ===============================
+       4️⃣ HANDLE SECTION (AUTO IF EMPTY)
+    =============================== */
+
+    let finalSection = section
+      ? String(section).trim()
+      : "";
+
+    if (!finalSection) {
+      const existing = await Student.find({
+        department,
+        year,
+      });
+
+      const position = existing.length;
+      const STUDENTS_PER_SECTION = 70;
+      const sectionLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+      const sectionIndex = Math.floor(
+        position / STUDENTS_PER_SECTION
+      );
+
+      finalSection = sectionLetters[sectionIndex] || "";
+    }
+
+    /* ===============================
+       5️⃣ HANDLE MOBILE
+    =============================== */
+
+    let finalMobile = mobileNumber
+      ? String(mobileNumber).trim()
+      : "";
+
+    if (!finalMobile) {
       finalMobile =
-        "9" + Math.floor(100000000 + Math.random() * 900000000);
+        "9" +
+        Math.floor(
+          100000000 + Math.random() * 900000000
+        );
     }
 
-    const hashedPassword = await bcrypt.hash(password || "123456", 10);
+    /* ===============================
+       6️⃣ PASSWORD HASH
+    =============================== */
 
-    const newStudent = new Student({
+    const rawPassword = password || "123456";
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+    /* ===============================
+       7️⃣ CREATE STUDENT
+    =============================== */
+
+    const newStudent = await Student.create({
       firstName,
       lastName,
       registerNumber,
@@ -99,12 +159,14 @@ export const addStudent = async (req, res) => {
       password: hashedPassword,
     });
 
-    await newStudent.save();
+    /* ===============================
+       8️⃣ CREATE USER LOGIN
+    =============================== */
 
     await User.create({
       name: `${firstName} ${lastName}`,
       email,
-      password: password || "123456",
+      password: rawPassword,
       role: "student",
     });
 
@@ -114,9 +176,11 @@ export const addStudent = async (req, res) => {
     });
 
   } catch (error) {
+    console.log("Add student error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ======================================================
 // ✅ UPDATE STUDENT
@@ -185,54 +249,73 @@ export const uploadMultipleStudents = async (req, res) => {
 
     let inserted = 0;
     let updated = 0;
-    let students = [];
 
-    const STUDENTS_PER_SECTION = 70; // ✅ 70 per section
+    const STUDENTS_PER_SECTION = 70;
     const sectionLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-    // --------------------------------------------------------
-    // 1️⃣ READ + NORMALIZE EXCEL ROWS
-    // --------------------------------------------------------
+    const students = [];
+
+    /* --------------------------------------------------------
+       1️⃣ READ & NORMALIZE
+    -------------------------------------------------------- */
 
     for (let i = 0; i < rows.length; i++) {
       const raw = rows[i];
+
       const normalized = {};
 
-      Object.keys(raw).forEach((k) => {
-        normalized[normalizeKey(k)] = raw[k];
+      Object.keys(raw).forEach((key) => {
+        normalized[key.trim().toLowerCase()] = raw[key];
       });
 
       const email =
-        getNorm(normalized, "email", "mail") ||
+        normalized.email ||
         `student${Date.now()}${i}@college.edu`;
 
       const registerNumber =
-        getNorm(normalized, "regno", "registernumber") || `REG${1000 + i}`;
+        normalized.registernumber ||
+        normalized.regno ||
+        `REG${1000 + i}`;
 
       const firstName =
-        getNorm(normalized, "firstname", "first") || `User${i}`;
+        normalized.firstname ||
+        normalized.first ||
+        `User${i}`;
 
       const lastName =
-        getNorm(normalized, "lastname", "last") || `Auto${i}`;
+        normalized.lastname ||
+        normalized.last ||
+        `Auto${i}`;
 
-      const department = getNorm(normalized, "department", "dept") || "";
-      const year = getNorm(normalized, "year") || "";
+      const department = normalized.department || "";
+      const year = normalized.year || "";
 
-      let section = (getNorm(normalized, "section") || "").trim();
+      let section = normalized.section
+        ? String(normalized.section).trim()
+        : "";
 
-      let rollNumber = getNorm(normalized, "rollno", "roll") || "";
-      if (!rollNumber.trim()) {
-        const deptCount = await Student.countDocuments({ department, year });
-        rollNumber = `R${deptCount + 1}`;
+      /* ✅ FIXED ROLL NUMBER LOGIC */
+      let rollNumber = normalized.rollnumber
+        ? String(normalized.rollnumber).trim()
+        : "";
+
+      if (!rollNumber) {
+        const deptCount = await Student.countDocuments({
+          department,
+          year,
+        });
+
+        rollNumber = `R${deptCount + i + 1}`;
       }
 
-      let mobileNumber = getNorm(normalized, "phone", "mobile") || "";
-      if (!mobileNumber.trim()) {
+      let mobileNumber = normalized.phone || normalized.mobile || "";
+
+      if (!mobileNumber) {
         mobileNumber =
           "9" + Math.floor(100000000 + Math.random() * 900000000);
       }
 
-      const rawPwd = String(getNorm(normalized, "password") || "123456");
+      const rawPwd = String(normalized.password || "123456");
       const hashedPassword = await bcrypt.hash(rawPwd, 10);
 
       students.push({
@@ -250,15 +333,17 @@ export const uploadMultipleStudents = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // 2️⃣ SORT FOR CLEAN ORDER
-    // --------------------------------------------------------
+    /* --------------------------------------------------------
+       2️⃣ SORT
+    -------------------------------------------------------- */
 
-    students.sort((a, b) => a.firstName.localeCompare(b.firstName));
+    students.sort((a, b) =>
+      a.firstName.localeCompare(b.firstName)
+    );
 
-    // --------------------------------------------------------
-    // 3️⃣ GROUP BY DEPARTMENT + YEAR
-    // --------------------------------------------------------
+    /* --------------------------------------------------------
+       3️⃣ GROUP BY DEPT + YEAR
+    -------------------------------------------------------- */
 
     const group = {};
 
@@ -268,30 +353,24 @@ export const uploadMultipleStudents = async (req, res) => {
       group[key].push(stu);
     }
 
-    // --------------------------------------------------------
-    // 4️⃣ SECTION ALLOCATION (70 PER SECTION)
-    // --------------------------------------------------------
+    /* --------------------------------------------------------
+       4️⃣ AUTO SECTION ALLOCATION
+    -------------------------------------------------------- */
 
     for (const key in group) {
       const [dept, yr] = key.split("-");
 
-      // Existing students in DB
       const existing = await Student.find({
         department: dept,
         year: yr,
-      }).sort({ firstName: 1 });
+      });
 
       const existingCount = existing.length;
 
       let list = group[key];
 
-      // Only auto-allocate students without manual section
       let autoList = list.filter(
         (stu) => !stu.section || stu.section.trim() === ""
-      );
-
-      autoList.sort((a, b) =>
-        a.firstName.localeCompare(b.firstName)
       );
 
       for (let i = 0; i < autoList.length; i++) {
@@ -305,9 +384,9 @@ export const uploadMultipleStudents = async (req, res) => {
       }
     }
 
-    // --------------------------------------------------------
-    // 5️⃣ INSERT OR UPDATE STUDENTS
-    // --------------------------------------------------------
+    /* --------------------------------------------------------
+       5️⃣ INSERT / UPDATE
+    -------------------------------------------------------- */
 
     for (const stu of students) {
       const {
@@ -329,7 +408,6 @@ export const uploadMultipleStudents = async (req, res) => {
       });
 
       if (existingStudent) {
-        // UPDATE
         await Student.updateOne(
           { _id: existingStudent._id },
           {
@@ -345,18 +423,8 @@ export const uploadMultipleStudents = async (req, res) => {
           }
         );
 
-        let existingUser = await User.findOne({ email });
-
-        if (existingUser) {
-          existingUser.name = `${firstName} ${lastName}`;
-          existingUser.password = rawPwd;
-          existingUser.role = "student";
-          await existingUser.save();
-        }
-
         updated++;
       } else {
-        // INSERT
         await Student.create({
           firstName,
           lastName,
@@ -370,27 +438,16 @@ export const uploadMultipleStudents = async (req, res) => {
           password: hashedPassword,
         });
 
-        let existingUser = await User.findOne({ email });
-
-        if (!existingUser) {
-          await User.create({
-            name: `${firstName} ${lastName}`,
-            email,
-            password: rawPwd,
-            role: "student",
-          });
-        }
-
         inserted++;
       }
     }
 
-    // --------------------------------------------------------
-    // 6️⃣ RESPONSE
-    // --------------------------------------------------------
+    /* --------------------------------------------------------
+       6️⃣ RESPONSE
+    -------------------------------------------------------- */
 
     res.status(200).json({
-      message: "Upload Completed (70 students per section)",
+      message: "Upload Completed Successfully",
       insertedStudents: inserted,
       updatedStudents: updated,
     });
@@ -400,7 +457,6 @@ export const uploadMultipleStudents = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 
 // ======================================================
@@ -442,12 +498,11 @@ export const getStudentsByDeptPie = async (req, res) => {
     ]);
 
     res.json({
-      firstYear: data.find(d => d._id === "First Year")?.count || 0,
-      secondYear: data.find(d => d._id === "Second Year")?.count || 0,
-      thirdYear: data.find(d => d._id === "Third Year")?.count || 0,
-      fourthYear: data.find(d => d._id === "Fourth Year")?.count || 0,
+      firstYear: data.find((d) => d._id === "First Year")?.count || 0,
+      secondYear: data.find((d) => d._id === "Second Year")?.count || 0,
+      thirdYear: data.find((d) => d._id === "Third Year")?.count || 0,
+      fourthYear: data.find((d) => d._id === "Fourth Year")?.count || 0,
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -461,19 +516,18 @@ export const getStudentDashboard = async (req, res) => {
     const totalStudents = await Student.countDocuments();
 
     const yearwise = await Student.aggregate([
-      { $group: { _id: "$year", count: { $sum: 1 } } }
+      { $group: { _id: "$year", count: { $sum: 1 } } },
     ]);
 
     res.json({
       totalStudents,
       yearWise: {
-        firstYear: yearwise.find(y => y._id === "First Year")?.count || 0,
-        secondYear: yearwise.find(y => y._id === "Second Year")?.count || 0,
-        thirdYear: yearwise.find(y => y._id === "Third Year")?.count || 0,
-        fourthYear: yearwise.find(y => y._id === "Fourth Year")?.count || 0,
-      }
+        firstYear: yearwise.find((y) => y._id === "First Year")?.count || 0,
+        secondYear: yearwise.find((y) => y._id === "Second Year")?.count || 0,
+        thirdYear: yearwise.find((y) => y._id === "Third Year")?.count || 0,
+        fourthYear: yearwise.find((y) => y._id === "Fourth Year")?.count || 0,
+      },
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -511,7 +565,6 @@ export const getStudentsFiltered = async (req, res) => {
       total: students.length,
       students,
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -524,19 +577,19 @@ export const getDepartmentSummary = async (req, res) => {
     const hodDept = req.user.department; // department from token
 
     if (!hodDept) {
-      return res.status(400).json({ message: "HOD Department missing in token" });
+      return res
+        .status(400)
+        .json({ message: "HOD Department missing in token" });
     }
 
     // Fetch all students of this department
-    const students = await Student.find({ department: hodDept })
-      .sort({ year: 1, section: 1, firstName: 1 });
+    const students = await Student.find({ department: hodDept }).sort({
+      year: 1,
+      section: 1,
+      firstName: 1,
+    });
 
-    const yearsList = [
-      "1st Year",
-      "2nd Year",
-      "3rd Year",
-      "4th Year",
-    ];
+    const yearsList = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
     const summary = {
       department: hodDept,
@@ -563,9 +616,8 @@ export const getDepartmentSummary = async (req, res) => {
       const sectionMap = {};
 
       yearStudents.forEach((s) => {
-        const sec = s.section && s.section.trim() !== "" 
-          ? s.section 
-          : "Unallocated";
+        const sec =
+          s.section && s.section.trim() !== "" ? s.section : "Unallocated";
 
         if (!sectionMap[sec]) sectionMap[sec] = [];
         sectionMap[sec].push(s);
@@ -588,7 +640,6 @@ export const getDepartmentSummary = async (req, res) => {
     }
 
     res.json(summary);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -616,20 +667,15 @@ export const swapStudentSection = async (req, res) => {
     // 2️⃣ UPDATE — without checking section limits
     await Student.updateMany(
       { _id: { $in: studentIds } },
-      { $set: { section: newSection } }
+      { $set: { section: newSection } },
     );
 
     res.json({
       message: `Successfully moved ${students.length} students to section ${newSection}`,
       moved: students.length,
-      section: newSection
+      section: newSection,
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-
-
-
