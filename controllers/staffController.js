@@ -91,18 +91,18 @@ export const getStaffSubjectPlanning = async (req, res) => {
 export const joinClassroom = async (req, res) => {
   try {
     const studentId = req.user.id;
-    const { classId } = req.params;
+    const { sectionId } = req.params;
     const { code } = req.body;
 
-    if (!classId || !code) {
+    if (!sectionId || !code) {
       return res.status(400).json({
-        message: 'Class ID and classroom code are required'
+        message: 'Section ID and classroom code are required'
       });
     }
 
     // 🔍 find section by _id
     const allocation = await AdminAllocation.findOne({
-      'subjects.sections._id': classId
+      'subjects.sections._id': sectionId
     });
 
     if (!allocation) {
@@ -116,7 +116,7 @@ export const joinClassroom = async (req, res) => {
 
     for (const subject of allocation.subjects) {
       for (const section of subject.sections) {
-        if (section._id.toString() === classId) {
+        if (section._id.toString() === sectionId) {
           sectionFound = section;
           subjectFound = subject;
           break;
@@ -133,7 +133,7 @@ export const joinClassroom = async (req, res) => {
     }
 
     const alreadyJoined = await ClassroomMember.findOne({
-      classId,
+      sectionId,
       userId: studentId
     });
 
@@ -144,7 +144,7 @@ export const joinClassroom = async (req, res) => {
     }
 
     await ClassroomMember.create({
-      classId,
+      sectionId,
       userId: studentId,
       userModel: 'Student',
       role: 'student',
@@ -168,7 +168,7 @@ export const joinClassroom = async (req, res) => {
 export const sendInvitation = async (req, res) => {
   try {
     const facultyId = req.user.facultyId;
-    const { classId } = req.params; // section._id
+    const { sectionId } = req.params;
     const { emails, role } = req.body;
 
     if (!Array.isArray(emails) || emails.length === 0 || !role) {
@@ -181,9 +181,9 @@ export const sendInvitation = async (req, res) => {
       return res.status(400).json({ message: 'Invalid role' });
     }
 
-    // 🔍 Find allocation + section
+    // 🔍 Validate section exists
     const allocation = await AdminAllocation.findOne({
-      'subjects.sections._id': classId
+      'subjects.sections._id': sectionId
     });
 
     if (!allocation) {
@@ -194,7 +194,7 @@ export const sendInvitation = async (req, res) => {
 
     for (const subject of allocation.subjects) {
       for (const section of subject.sections) {
-        if (section._id.toString() === classId) {
+        if (section._id.toString() === sectionId) {
           sectionFound = section;
           subjectFound = subject;
           break;
@@ -206,16 +206,58 @@ export const sendInvitation = async (req, res) => {
       return res.status(404).json({ message: 'Classroom section not found' });
     }
 
+    // 🔹 Normalize + unique emails
+    const uniqueEmails = [
+      ...new Set(
+        emails
+          .map((e) => e?.trim().toLowerCase())
+          .filter((e) => e && e.includes('@'))
+      )
+    ];
+
     const invited = [];
+    const skipped = [];
 
-    for (const rawEmail of emails) {
-      const email = rawEmail?.trim().toLowerCase();
-      if (!email || !email.includes('@')) continue;
+    for (const email of uniqueEmails) {
+      // 1️⃣ Already a member?
+      const alreadyMember = await ClassroomMember.findOne({
+        sectionId,
+        role
+      }).populate({
+        path: 'userId',
+        match: { email }
+      });
 
+      if (alreadyMember?.userId) {
+        skipped.push({ email, reason: 'Already joined' });
+        continue;
+      }
+
+      // 2️⃣ Existing invitation?
+      const existingInvite = await ClassroomInvitation.findOne({
+        sectionId,
+        email,
+        role
+      });
+
+      if (existingInvite) {
+        if (
+          existingInvite.status === 'Pending' &&
+          existingInvite.expiresAt < new Date()
+        ) {
+          existingInvite.status = 'Expired';
+          await existingInvite.save();
+        } else if (existingInvite.status === 'Pending') {
+          skipped.push({ email, reason: 'Invitation already sent' });
+          continue;
+        }
+      }
+
+      // 3️⃣ Create invitation
       const token = crypto.randomBytes(32).toString('hex');
 
       await ClassroomInvitation.create({
-        classId,
+        sectionId,
         email,
         invitedBy: facultyId,
         role,
@@ -223,10 +265,14 @@ export const sendInvitation = async (req, res) => {
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
       });
 
+      // 4️⃣ Send mail
       const inviteLink = `${process.env.FRONTEND_URL}classroom/invite?token=${token}`;
-      console.log(subjectFound);
+
       const html = buildInviteEmail({
         subjectName: subjectFound.subject,
+        subjectCode: subjectFound.code,
+        sectionName: sectionFound.sectionName,
+        role,
         inviteLink
       });
 
@@ -240,8 +286,11 @@ export const sendInvitation = async (req, res) => {
     }
 
     return res.status(201).json({
-      message: 'Invitations sent successfully',
-      invited
+      message: 'Invitation process completed',
+      invited,
+      skipped,
+      invitedCount: invited.length,
+      skippedCount: skipped.length
     });
   } catch (error) {
     console.error('Send Invitation Error:', error);
@@ -268,7 +317,6 @@ export const respondInvitation = async (req, res) => {
     const userRole = req.user.role;
     const userEmail = req.user.email;
 
-    // faculty uses facultyId
     if (userRole === 'faculty') {
       userId = req.user.facultyId;
     }
@@ -280,21 +328,21 @@ export const respondInvitation = async (req, res) => {
       return res.status(404).json({ message: 'Invalid invitation' });
     }
 
-    if (invitation.status !== 'Pending') {
-      return res.status(400).json({ message: 'Invitation already used' });
-    }
-
+    // 2️⃣ Expiry check
     if (invitation.expiresAt < new Date()) {
-      invitation.status = 'Expired';
-      await invitation.save();
+      if (invitation.status === 'Pending') {
+        invitation.status = 'Expired';
+        await invitation.save();
+      }
       return res.status(400).json({ message: 'Invitation expired' });
     }
 
-    // 2️⃣ Email + role validation
+    // 3️⃣ Email validation
     if (invitation.email !== userEmail) {
       return res.status(403).json({ message: 'Email mismatch' });
     }
 
+    // 4️⃣ Role validation
     if (
       (invitation.role === 'faculty' && userRole !== 'faculty') ||
       (invitation.role === 'student' && userRole !== 'student')
@@ -302,7 +350,38 @@ export const respondInvitation = async (req, res) => {
       return res.status(403).json({ message: 'Role mismatch' });
     }
 
-    // 3️⃣ Reject flow
+    // 5️⃣ Section existence check
+    const allocation = await AdminAllocation.findOne({
+      'subjects.sections._id': invitation.sectionId
+    });
+
+    if (!allocation) {
+      invitation.status = 'Expired';
+      await invitation.save();
+
+      return res.status(404).json({
+        message: 'Classroom no longer exists'
+      });
+    }
+
+    // 6️⃣ Already joined?
+    const alreadyJoined = await ClassroomMember.findOne({
+      sectionId: invitation.sectionId,
+      userId
+    });
+
+    if (alreadyJoined) {
+      if (invitation.status === 'Pending') {
+        invitation.status = 'Accepted';
+        await invitation.save();
+      }
+
+      return res.status(200).json({
+        message: 'Already joined classroom'
+      });
+    }
+
+    // 7️⃣ Reject
     if (action === 'reject') {
       invitation.status = 'Rejected';
       await invitation.save();
@@ -312,39 +391,15 @@ export const respondInvitation = async (req, res) => {
       });
     }
 
-    // 4️⃣ Validate classroom (section) exists
-    const allocation = await AdminAllocation.findOne({
-      'subjects.sections._id': invitation.classId
-    });
-
-    if (!allocation) {
-      return res.status(404).json({
-        message: 'Classroom not found'
-      });
-    }
-
-    // 5️⃣ Already joined check
-    const alreadyJoined = await ClassroomMember.findOne({
-      classId: invitation.classId,
-      userId
-    });
-
-    if (alreadyJoined) {
-      return res.status(409).json({
-        message: 'Already joined classroom'
-      });
-    }
-
-    // 6️⃣ Create membership
+    // 8️⃣ Accept
     await ClassroomMember.create({
-      classId: invitation.classId, // section._id
+      sectionId: invitation.sectionId,
       userId,
       userModel: invitation.role === 'faculty' ? 'Faculty' : 'Student',
       role: invitation.role,
       joinMethod: 'invite'
     });
 
-    // 7️⃣ Mark invitation accepted
     invitation.status = 'Accepted';
     await invitation.save();
 
@@ -353,6 +408,13 @@ export const respondInvitation = async (req, res) => {
     });
   } catch (error) {
     console.error('Respond Invitation Error:', error);
+
+    if (error.code === 11000) {
+      return res.status(200).json({
+        message: 'Already joined classroom'
+      });
+    }
+
     return res.status(500).json({
       message: 'Internal server error'
     });

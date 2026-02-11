@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const ClassroomMemberSchema = new mongoose.Schema(
   {
     // 🔥 refers to AdminAllocation.subjects.sections._id
-    classId: {
+    sectionId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
       index: true
@@ -30,6 +30,6 @@ const ClassroomMemberSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-ClassroomMemberSchema.index({ classId: 1, userId: 1 }, { unique: true });
+ClassroomMemberSchema.index({ sectionId: 1, userId: 1 }, { unique: true });
 
 export default mongoose.model('ClassroomMember', ClassroomMemberSchema);
