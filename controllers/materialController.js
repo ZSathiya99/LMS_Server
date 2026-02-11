@@ -63,9 +63,15 @@ export const getMaterialsBySubject = async (req, res) => {
     const materials = await Material.find({ subjectId })
       .sort({ createdAt: -1 });
 
+    // 🔥 Add key to each material
+    const formattedMaterials = materials.map((material) => ({
+      ...material.toObject(),
+      key: "Material",   // ✅ Added here
+    }));
+
     return res.status(200).json({
-      total: materials.length,
-      data: materials,
+      total: formattedMaterials.length,
+      data: formattedMaterials,
     });
 
   } catch (error) {
@@ -73,6 +79,7 @@ export const getMaterialsBySubject = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 /* =====================================================

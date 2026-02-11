@@ -7,15 +7,8 @@ import ClassroomMembers from "../models/ClassroomMembers.js";
 ===================================================== */
 export const createAssignment = async (req, res) => {
   try {
-    const {
-      subjectId,
-      title,
-      instruction,
-      link,
-      youtubeLink,
-      dueDate,
-      marks,
-    } = req.body;
+    const { subjectId, title, instruction, link, youtubeLink, dueDate, marks } =
+      req.body;
 
     const staffId = req.user.facultyId;
 
@@ -34,7 +27,7 @@ export const createAssignment = async (req, res) => {
     const uploadedFiles =
       req.files?.map(
         (file) =>
-          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`,
       ) || [];
 
     const assignment = await Assignment.create({
@@ -68,11 +61,16 @@ export const getAssignmentsBySubject = async (req, res) => {
   try {
     const { subjectId } = req.params;
 
+    /* ===============================
+       1️⃣ Validate Subject ID
+    =============================== */
     if (!mongoose.Types.ObjectId.isValid(subjectId)) {
       return res.status(400).json({ message: "Invalid Subject ID" });
     }
 
-    // 1️⃣ Classroom students
+    /* ===============================
+       2️⃣ Get Classroom Students
+    =============================== */
     const classroomStudents = await ClassroomMembers.find({
       subjectId,
     }).populate(
@@ -82,16 +80,24 @@ export const getAssignmentsBySubject = async (req, res) => {
 
     const totalStudents = classroomStudents.length;
 
-    // 2️⃣ Assignments
+    /* ===============================
+       3️⃣ Get Assignments
+    =============================== */
     const assignments = await Assignment.find({ subjectId })
       .sort({ createdAt: -1 });
 
-    // 3️⃣ Build response
+    /* ===============================
+       4️⃣ Build Final Response
+    =============================== */
     const result = assignments.map((assignment) => {
+
+      const assignmentData = assignment.toObject();
+
       const submittedIds = assignment.submissions.map((s) =>
         s.studentId.toString()
       );
 
+      /* -------- Submitted Students -------- */
       const submittedStudents = classroomStudents
         .filter((stu) =>
           submittedIds.includes(stu.studentId._id.toString())
@@ -111,6 +117,7 @@ export const getAssignmentsBySubject = async (req, res) => {
           };
         });
 
+      /* -------- Pending Students -------- */
       const pendingStudents = classroomStudents
         .filter(
           (stu) =>
@@ -120,8 +127,10 @@ export const getAssignmentsBySubject = async (req, res) => {
         )
         .map((stu) => stu.studentId);
 
+      /* -------- Final Merged Object -------- */
       return {
-        ...assignment.toObject(),
+        ...assignmentData,      // 🔥 All assignment fields
+        key: "Assignment",      // 🔥 Your required key
 
         stats: {
           totalStudents,
@@ -138,15 +147,21 @@ export const getAssignmentsBySubject = async (req, res) => {
       };
     });
 
+    /* ===============================
+       5️⃣ Send Response
+    =============================== */
     return res.status(200).json({
       totalAssignments: result.length,
       assignments: result,
     });
+
   } catch (error) {
     console.error("Get Assignments Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 /* =====================================================
    GET SINGLE ASSIGNMENT
@@ -182,11 +197,9 @@ export const updateAssignment = async (req, res) => {
       return res.status(400).json({ message: "Invalid Assignment ID" });
     }
 
-    const updated = await Assignment.findByIdAndUpdate(
-      assignmentId,
-      req.body,
-      { new: true }
-    );
+    const updated = await Assignment.findByIdAndUpdate(assignmentId, req.body, {
+      new: true,
+    });
 
     if (!updated) {
       return res.status(404).json({ message: "Assignment not found" });
@@ -212,9 +225,7 @@ export const deleteAssignment = async (req, res) => {
       return res.status(400).json({ message: "Invalid Assignment ID" });
     }
 
-    const deleted = await Assignment.findByIdAndDelete(
-      assignmentId
-    );
+    const deleted = await Assignment.findByIdAndDelete(assignmentId);
 
     if (!deleted) {
       return res.status(404).json({ message: "Assignment not found" });
@@ -247,11 +258,8 @@ export const addAssignmentComment = async (req, res) => {
 
     assignment.comments.push({
       userId:
-        req.user.role === "faculty"
-          ? req.user.facultyId
-          : req.user.studentId,
-      userType:
-        req.user.role === "faculty" ? "staff" : "student",
+        req.user.role === "faculty" ? req.user.facultyId : req.user.studentId,
+      userType: req.user.role === "faculty" ? "staff" : "student",
       comment,
     });
 
@@ -284,7 +292,7 @@ export const submitAssignment = async (req, res) => {
       : null;
 
     const existing = assignment.submissions.find(
-      (s) => s.studentId.toString() === studentId.toString()
+      (s) => s.studentId.toString() === studentId.toString(),
     );
 
     if (existing) {
@@ -323,7 +331,7 @@ export const gradeSubmission = async (req, res) => {
     }
 
     const submission = assignment.submissions.find(
-      (s) => s.studentId.toString() === studentId
+      (s) => s.studentId.toString() === studentId,
     );
 
     if (!submission) {

@@ -330,9 +330,15 @@ export const getFullQuestionDetails = async (req, res) => {
 
     res.json({
       question: {
+        key: "Question",     // ✅ Added here
+        _id: question._id,
         title: question.title,
         marks: question.marks,
         dueDate: question.dueDate,
+        questionType: question.questionType,
+        instruction: question.instruction,
+        attachments: question.attachments,
+        options: question.options,
       },
 
       comments: {
@@ -362,3 +368,4 @@ export const getFullQuestionDetails = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
