@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const ClassroomInvitationSchema = new mongoose.Schema(
   {
     // 🔥 refers to AdminAllocation.subjects.sections._id
-    classId: {
+    sectionId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
       index: true
