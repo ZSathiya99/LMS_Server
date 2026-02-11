@@ -1,6 +1,6 @@
 import express from "express";
-import { uploadDocuments } from "../middleware/upload.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
+import { uploadDocuments } from "../middleware/upload.js";
 
 import {
   createQuestion,
@@ -8,45 +8,93 @@ import {
   getSingleQuestion,
   updateQuestion,
   deleteQuestion,
+  addQuestionComment,
+  deleteQuestionComment,
+  submitQuestion,
+  getFullQuestionDetails,
 } from "../controllers/questionController.js";
 
 const router = express.Router();
 
-// ✅ POST
+/* ======================================================
+   QUESTION CRUD
+====================================================== */
+
+/* CREATE QUESTION */
 router.post(
-  "/staff/question",
+  "/question",
   verifyToken,
   uploadDocuments.array("attachments", 5),
   createQuestion
 );
 
-// ✅ GET All
+/* GET ALL QUESTIONS BY SUBJECT */
 router.get(
-  "/staff/questions/:subjectId",
+  "/question/subject/:subjectId",
   verifyToken,
   getQuestions
 );
 
-// ✅ GET Single
+/* GET SINGLE QUESTION */
 router.get(
-  "/staff/question/:questionId",
+  "/question/:questionId",
   verifyToken,
   getSingleQuestion
 );
 
-// ✅ PUT
+/* UPDATE QUESTION */
 router.put(
-  "/staff/question/:questionId",
+  "/question/:questionId",
   verifyToken,
   uploadDocuments.array("attachments", 5),
   updateQuestion
 );
 
-// ✅ DELETE
+/* DELETE QUESTION */
 router.delete(
-  "/staff/question/:questionId",
+  "/question/:questionId",
   verifyToken,
   deleteQuestion
+);
+
+/* ======================================================
+   COMMENTS
+====================================================== */
+
+/* ADD COMMENT */
+router.post(
+  "/question/:questionId/comment",
+  verifyToken,
+  addQuestionComment
+);
+
+/* DELETE COMMENT */
+router.delete(
+  "/question/:questionId/comment/:commentId",
+  verifyToken,
+  deleteQuestionComment
+);
+
+/* ======================================================
+   STUDENT SUBMISSION
+====================================================== */
+
+/* SUBMIT QUESTION */
+router.post(
+  "/question/:questionId/submit",
+  verifyToken,
+  submitQuestion
+);
+
+/* ======================================================
+   FULL DETAILS (OVERALL)
+====================================================== */
+
+/* GET FULL QUESTION DETAILS */
+router.get(
+  "/question/full/:questionId",
+  verifyToken,
+  getFullQuestionDetails
 );
 
 export default router;

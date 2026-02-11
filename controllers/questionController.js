@@ -1,11 +1,12 @@
-import Question from "../models/Question.js";
+import mongoose from "mongoose";
 import fs from "fs";
 import path from "path";
+import Question from "../models/Question.js";
+import ClassroomMembers from "../models/ClassroomMembers.js";
 
-
-// ======================================================
-// ✅ POST - Create Question (Form-Data)
-// ======================================================
+/* ======================================================
+   CREATE QUESTION
+====================================================== */
 export const createQuestion = async (req, res) => {
   try {
     const staffId = req.user.facultyId;
@@ -19,13 +20,13 @@ export const createQuestion = async (req, res) => {
       link,
       youtubeLink,
       options,
-      marks, // 🔥 ADD
+      marks,
     } = req.body;
 
-    // ✅ Validation
-    if (!subjectId || !title || !questionType || !marks) {
+    if (!subjectId || !title || !questionType || !marks || !dueDate) {
       return res.status(400).json({
-        message: "subjectId, title, questionType and marks are required",
+        message:
+          "subjectId, title, questionType, marks and dueDate are required",
       });
     }
 
@@ -41,23 +42,20 @@ export const createQuestion = async (req, res) => {
 
     let formattedOptions = [];
 
-    // ✅ MCQ handling
     if (
       questionType === "Single Choice" ||
       questionType === "Multiple Choice"
     ) {
       if (!options) {
         return res.status(400).json({
-          message: "Options are required for choice questions",
+          message: "Options required for MCQ",
         });
       }
 
-      const parsedOptions =
+      const parsed =
         typeof options === "string" ? JSON.parse(options) : options;
 
-      formattedOptions = parsedOptions.map((opt) => ({
-        text: opt,
-      }));
+      formattedOptions = parsed.map((opt) => ({ text: opt }));
     }
 
     const question = await Question.create({
@@ -70,27 +68,25 @@ export const createQuestion = async (req, res) => {
       options: formattedOptions,
       link,
       youtubeLink,
-      marks: Number(marks), // 🔥 SAVE MARKS
+      marks: Number(marks),
       dueDate,
+      comments: [],
+      submissions: [],
     });
 
-    return res.status(201).json({
+    res.status(201).json({
       message: "Question created successfully",
       data: question,
     });
+
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-
-
-
-
-
-// ======================================================
-// ✅ GET - Get All Questions (By Subject)
-// ======================================================
+/* ======================================================
+   GET QUESTIONS BY SUBJECT
+====================================================== */
 export const getQuestions = async (req, res) => {
   try {
     const { subjectId } = req.params;
@@ -98,123 +94,81 @@ export const getQuestions = async (req, res) => {
     const questions = await Question.find({ subjectId })
       .sort({ createdAt: -1 });
 
-    res.status(200).json({
+    res.json({
       total: questions.length,
       data: questions,
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-
-// ======================================================
-// ✅ GET - Single Question
-// ======================================================
+/* ======================================================
+   GET SINGLE QUESTION
+====================================================== */
 export const getSingleQuestion = async (req, res) => {
   try {
     const { questionId } = req.params;
 
     const question = await Question.findById(questionId);
 
-    if (!question) {
+    if (!question)
       return res.status(404).json({ message: "Question not found" });
-    }
 
-    res.status(200).json({ data: question });
+    res.json(question);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-
-// ======================================================
-// ✅ PUT - Update Question (Form-Data + Options Support)
-// ======================================================
+/* ======================================================
+   UPDATE QUESTION
+====================================================== */
 export const updateQuestion = async (req, res) => {
   try {
     const { questionId } = req.params;
     const staffId = req.user.facultyId;
 
     const question = await Question.findById(questionId);
-
-    if (!question) {
+    if (!question)
       return res.status(404).json({ message: "Question not found" });
-    }
 
-    // Only creator can update
-    if (question.staffId.toString() !== staffId.toString()) {
+    if (question.staffId.toString() !== staffId.toString())
       return res.status(403).json({ message: "Unauthorized" });
-    }
 
     const {
       title,
-      questionType,
       instruction,
       dueDate,
       link,
       youtubeLink,
       options,
+      marks,
     } = req.body;
 
-    // ===============================
-    // ✅ Basic Field Updates
-    // ===============================
     if (title) question.title = title;
     if (instruction) question.instruction = instruction;
     if (dueDate) question.dueDate = dueDate;
-
     if (link !== undefined) question.link = link;
     if (youtubeLink !== undefined) question.youtubeLink = youtubeLink;
+    if (marks) question.marks = marks;
 
-    // ===============================
-    // ✅ Handle Question Type Change
-    // ===============================
-    if (questionType) {
-      question.questionType = questionType;
+    if (options) {
+      const parsed =
+        typeof options === "string" ? JSON.parse(options) : options;
+
+      question.options = parsed.map((opt) => ({ text: opt }));
     }
 
-    // ===============================
-    // ✅ Handle Options (MCQ)
-    // ===============================
-    if (
-      question.questionType === "Single Choice" ||
-      question.questionType === "Multiple Choice"
-    ) {
-      if (options) {
-        let parsedOptions;
-
-        try {
-          parsedOptions =
-            typeof options === "string" ? JSON.parse(options) : options;
-        } catch (err) {
-          return res.status(400).json({
-            message: "Options must be valid JSON array",
-          });
-        }
-
-        question.options = parsedOptions.map((opt) => ({
-          text: opt,
-        }));
-      }
-    } else {
-      // If changed to Descriptive → remove options
-      question.options = [];
-    }
-
-    // ===============================
-    // ✅ File Update (Replace Files)
-    // ===============================
     if (req.files && req.files.length > 0) {
-      const newFiles = req.files.map((file) => file.filename);
-      question.attachments = newFiles;
+      question.attachments = req.files.map((file) => file.filename);
     }
 
     await question.save();
 
-    res.status(200).json({
+    res.json({
       message: "Question updated successfully",
       data: question,
     });
@@ -224,30 +178,21 @@ export const updateQuestion = async (req, res) => {
   }
 };
 
-
-
-
-
-// ======================================================
-// ✅ DELETE - Delete Question (Also delete files)
-// ======================================================
+/* ======================================================
+   DELETE QUESTION
+====================================================== */
 export const deleteQuestion = async (req, res) => {
   try {
     const { questionId } = req.params;
     const staffId = req.user.facultyId;
 
     const question = await Question.findById(questionId);
-
-    if (!question) {
+    if (!question)
       return res.status(404).json({ message: "Question not found" });
-    }
 
-    // Only creator can delete
-    if (question.staffId.toString() !== staffId.toString()) {
+    if (question.staffId.toString() !== staffId.toString())
       return res.status(403).json({ message: "Unauthorized" });
-    }
 
-    // delete attached files
     question.attachments.forEach((file) => {
       const filePath = path.join("uploads", file);
       if (fs.existsSync(filePath)) {
@@ -257,9 +202,162 @@ export const deleteQuestion = async (req, res) => {
 
     await Question.findByIdAndDelete(questionId);
 
-    res.status(200).json({
-      message: "Question deleted successfully",
+    res.json({ message: "Question deleted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ======================================================
+   ADD COMMENT
+====================================================== */
+export const addQuestionComment = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const { comment } = req.body;
+
+    const question = await Question.findById(questionId);
+    if (!question)
+      return res.status(404).json({ message: "Question not found" });
+
+    question.comments.push({
+      userId:
+        req.user.role === "faculty"
+          ? req.user.facultyId
+          : req.user.studentId,
+      userType:
+        req.user.role === "faculty" ? "staff" : "student",
+      comment,
     });
+
+    await question.save();
+
+    res.json({
+      message: "Comment added successfully",
+      comments: question.comments,
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ======================================================
+   DELETE COMMENT
+====================================================== */
+export const deleteQuestionComment = async (req, res) => {
+  try {
+    const { questionId, commentId } = req.params;
+
+    const question = await Question.findById(questionId);
+    if (!question)
+      return res.status(404).json({ message: "Question not found" });
+
+    const comment = question.comments.id(commentId);
+    if (!comment)
+      return res.status(404).json({ message: "Comment not found" });
+
+    comment.deleteOne();
+    await question.save();
+
+    res.json({ message: "Comment deleted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ======================================================
+   STUDENT SUBMIT
+====================================================== */
+export const submitQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const studentId = req.user.studentId;
+    const { selectedOptions } = req.body;
+
+    const question = await Question.findById(questionId);
+    if (!question)
+      return res.status(404).json({ message: "Question not found" });
+
+    const already = question.submissions.find(
+      (s) => s.studentId.toString() === studentId.toString()
+    );
+
+    if (already)
+      return res.status(400).json({ message: "Already submitted" });
+
+    question.submissions.push({
+      studentId,
+      selectedOptions,
+    });
+
+    await question.save();
+
+    res.json({ message: "Submitted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ======================================================
+   GET FULL OVERALL DETAILS
+====================================================== */
+export const getFullQuestionDetails = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+
+    const question = await Question.findById(questionId)
+      .populate("submissions.studentId", "name registerNumber profileImg");
+
+    if (!question)
+      return res.status(404).json({ message: "Question not found" });
+
+    const classroomStudents = await ClassroomMembers.find({
+      subjectId: question.subjectId,
+    }).populate("studentId", "name registerNumber profileImg");
+
+    const submittedIds = question.submissions.map((s) =>
+      s.studentId._id.toString()
+    );
+
+    const pending = classroomStudents.filter(
+      (stu) =>
+        !submittedIds.includes(stu.studentId._id.toString())
+    );
+
+    res.json({
+      question: {
+        title: question.title,
+        marks: question.marks,
+        dueDate: question.dueDate,
+      },
+
+      comments: {
+        staff: question.comments.filter(
+          (c) => c.userType === "staff"
+        ),
+        students: question.comments.filter(
+          (c) => c.userType === "student"
+        ),
+        total: question.comments.length,
+      },
+
+      students: {
+        total: classroomStudents.length,
+        submitted: {
+          count: question.submissions.length,
+          list: question.submissions,
+        },
+        pending: {
+          count: pending.length,
+          list: pending,
+        },
+      },
+    });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
