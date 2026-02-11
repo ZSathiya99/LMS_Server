@@ -15,6 +15,12 @@ const ClassroomMemberSchema = new mongoose.Schema(
       refPath: 'userModel'
     },
 
+    userModel: {
+      type: String,
+      required: true,
+      enum: ['Student', 'Faculty']
+    },
+    
     role: {
       type: String,
       enum: ['student', 'faculty'],

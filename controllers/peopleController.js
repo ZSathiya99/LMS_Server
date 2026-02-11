@@ -23,9 +23,8 @@ export const getClassMembers = async (req, res) => {
 
     // ✅ Fetch all members using sectionId
     const members = await ClassroomMember.find({ sectionId })
-      .select('userId role joinMethod createdAt')
-      .populate('userId', 'name email profileImg');
-
+      .select('userId userModel role joinMethod createdAt')
+      .populate('userId', 'firstName lastName email profileImage');
     const faculty = [];
     const students = [];
 
@@ -34,9 +33,9 @@ export const getClassMembers = async (req, res) => {
 
       const formatted = {
         id: member.userId._id,
-        name: member.userId.name,
+        name: member.userId.firstName,
         email: member.userId.email,
-        profileImg: member.userId.profileImg,
+        profileImg: member.userId.profileImage,
         joinMethod: member.joinMethod,
         joinedAt: member.createdAt
       };
