@@ -23,18 +23,19 @@ export const createQuestion = async (req, res) => {
       marks,
     } = req.body;
 
-    if (!subjectId || !title || !questionType || !marks || !dueDate) {
+    if (!mongoose.Types.ObjectId.isValid(subjectId))
+      return res.status(400).json({ message: "Invalid subjectId" });
+
+    if (!subjectId || !title || !questionType || !marks || !dueDate)
       return res.status(400).json({
         message:
           "subjectId, title, questionType, marks and dueDate are required",
       });
-    }
 
-    if (Number(marks) <= 0) {
+    if (Number(marks) <= 0)
       return res.status(400).json({
         message: "Marks must be greater than 0",
       });
-    }
 
     const attachments = req.files
       ? req.files.map((file) => file.filename)
@@ -46,11 +47,10 @@ export const createQuestion = async (req, res) => {
       questionType === "Single Choice" ||
       questionType === "Multiple Choice"
     ) {
-      if (!options) {
+      if (!options)
         return res.status(400).json({
           message: "Options required for MCQ",
         });
-      }
 
       const parsed =
         typeof options === "string" ? JSON.parse(options) : options;
@@ -84,130 +84,129 @@ export const createQuestion = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET QUESTIONS BY SUBJECT
-====================================================== */
-export const getQuestions = async (req, res) => {
-  try {
-    const { subjectId } = req.params;
-
-    const questions = await Question.find({ subjectId })
-      .sort({ createdAt: -1 });
-
-    res.json({
-      total: questions.length,
-      data: questions,
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 /* ======================================================
-   GET SINGLE QUESTION
+   GET QUESTIONS (OVERALL DETAILS LIKE ASSIGNMENT)
+   Endpoint:
+   GET /api/question?subjectId=XXXXX
 ====================================================== */
-export const getSingleQuestion = async (req, res) => {
+
+export const getQuestionsData = async (req, res) => {
   try {
-    const { questionId } = req.params;
+    const { subjectId } = req.query;
 
-    const question = await Question.findById(questionId);
-
-    if (!question)
-      return res.status(404).json({ message: "Question not found" });
-
-    res.json(question);
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/* ======================================================
-   UPDATE QUESTION
-====================================================== */
-export const updateQuestion = async (req, res) => {
-  try {
-    const { questionId } = req.params;
-    const staffId = req.user.facultyId;
-
-    const question = await Question.findById(questionId);
-    if (!question)
-      return res.status(404).json({ message: "Question not found" });
-
-    if (question.staffId.toString() !== staffId.toString())
-      return res.status(403).json({ message: "Unauthorized" });
-
-    const {
-      title,
-      instruction,
-      dueDate,
-      link,
-      youtubeLink,
-      options,
-      marks,
-    } = req.body;
-
-    if (title) question.title = title;
-    if (instruction) question.instruction = instruction;
-    if (dueDate) question.dueDate = dueDate;
-    if (link !== undefined) question.link = link;
-    if (youtubeLink !== undefined) question.youtubeLink = youtubeLink;
-    if (marks) question.marks = marks;
-
-    if (options) {
-      const parsed =
-        typeof options === "string" ? JSON.parse(options) : options;
-
-      question.options = parsed.map((opt) => ({ text: opt }));
+    if (!subjectId) {
+      return res.status(400).json({
+        message: "subjectId is required",
+      });
     }
 
-    if (req.files && req.files.length > 0) {
-      question.attachments = req.files.map((file) => file.filename);
+    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
+      return res.status(400).json({
+        message: "Invalid subjectId",
+      });
     }
 
-    await question.save();
+    /* 1️⃣ Get Classroom Students */
+    const classroomStudents = await ClassroomMembers.find({
+      subjectId,
+    }).populate(
+      "studentId",
+      "firstName lastName registerNumber email profileImg"
+    );
 
-    res.json({
-      message: "Question updated successfully",
-      data: question,
+    const totalStudents = classroomStudents.length;
+
+    /* 2️⃣ Get Questions */
+    const questions = await Question.find({ subjectId }).sort({
+      createdAt: -1,
+    });
+
+    /* 3️⃣ Build Final Response */
+    const formattedQuestions = questions.map((question) => {
+      const submittedIds = question.submissions.map((s) =>
+        s.studentId.toString()
+      );
+
+      /* Submitted Students */
+      const submittedStudents = classroomStudents
+        .filter((stu) =>
+          submittedIds.includes(stu.studentId._id.toString())
+        )
+        .map((stu) => {
+          const submission = question.submissions.find(
+            (s) =>
+              s.studentId.toString() ===
+              stu.studentId._id.toString()
+          );
+
+          return {
+            ...stu.studentId.toObject(),
+            submittedAt: submission?.submittedAt || null,
+          };
+        });
+
+      /* Pending Students */
+      const pendingStudents = classroomStudents
+        .filter(
+          (stu) =>
+            !submittedIds.includes(
+              stu.studentId._id.toString()
+            )
+        )
+        .map((stu) => stu.studentId);
+
+      return {
+        _id: question._id,
+        key: "Question",
+        subjectId: question.subjectId,
+        title: question.title,
+        marks: question.marks,
+        dueDate: question.dueDate,
+        questionType: question.questionType,
+        instruction: question.instruction,
+        attachments: question.attachments,
+        options: question.options,
+
+        /* 🔥 FULL COMMENTS (NOT COUNT) */
+        comments: {
+          total: question.comments.length,
+          staff: question.comments.filter(
+            (c) => c.userType === "staff"
+          ),
+          students: question.comments.filter(
+            (c) => c.userType === "student"
+          ),
+        },
+
+        /* 🔥 STATS */
+        stats: {
+          totalStudents,
+          submitted: submittedStudents.length,
+          pending: pendingStudents.length,
+        },
+
+        /* 🔥 STUDENT LISTS */
+        students: {
+          all: classroomStudents.map((stu) => stu.studentId),
+          submitted: submittedStudents,
+          pending: pendingStudents,
+        },
+      };
+    });
+
+    return res.status(200).json({
+      totalQuestions: formattedQuestions.length,
+      questions: formattedQuestions,
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Get Questions Error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
-/* ======================================================
-   DELETE QUESTION
-====================================================== */
-export const deleteQuestion = async (req, res) => {
-  try {
-    const { questionId } = req.params;
-    const staffId = req.user.facultyId;
 
-    const question = await Question.findById(questionId);
-    if (!question)
-      return res.status(404).json({ message: "Question not found" });
-
-    if (question.staffId.toString() !== staffId.toString())
-      return res.status(403).json({ message: "Unauthorized" });
-
-    question.attachments.forEach((file) => {
-      const filePath = path.join("uploads", file);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    });
-
-    await Question.findByIdAndDelete(questionId);
-
-    res.json({ message: "Question deleted successfully" });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 /* ======================================================
    ADD COMMENT
@@ -269,13 +268,12 @@ export const deleteQuestionComment = async (req, res) => {
 };
 
 /* ======================================================
-   STUDENT SUBMIT
+   SUBMIT QUESTION
 ====================================================== */
 export const submitQuestion = async (req, res) => {
   try {
     const { questionId } = req.params;
     const studentId = req.user.studentId;
-    const { selectedOptions } = req.body;
 
     const question = await Question.findById(questionId);
     if (!question)
@@ -290,7 +288,7 @@ export const submitQuestion = async (req, res) => {
 
     question.submissions.push({
       studentId,
-      selectedOptions,
+      submittedAt: new Date(),
     });
 
     await question.save();
@@ -301,71 +299,3 @@ export const submitQuestion = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-/* ======================================================
-   GET FULL OVERALL DETAILS
-====================================================== */
-export const getFullQuestionDetails = async (req, res) => {
-  try {
-    const { questionId } = req.params;
-
-    const question = await Question.findById(questionId)
-      .populate("submissions.studentId", "name registerNumber profileImg");
-
-    if (!question)
-      return res.status(404).json({ message: "Question not found" });
-
-    const classroomStudents = await ClassroomMembers.find({
-      subjectId: question.subjectId,
-    }).populate("studentId", "name registerNumber profileImg");
-
-    const submittedIds = question.submissions.map((s) =>
-      s.studentId._id.toString()
-    );
-
-    const pending = classroomStudents.filter(
-      (stu) =>
-        !submittedIds.includes(stu.studentId._id.toString())
-    );
-
-    res.json({
-      question: {
-        key: "Question",     // ✅ Added here
-        _id: question._id,
-        title: question.title,
-        marks: question.marks,
-        dueDate: question.dueDate,
-        questionType: question.questionType,
-        instruction: question.instruction,
-        attachments: question.attachments,
-        options: question.options,
-      },
-
-      comments: {
-        staff: question.comments.filter(
-          (c) => c.userType === "staff"
-        ),
-        students: question.comments.filter(
-          (c) => c.userType === "student"
-        ),
-        total: question.comments.length,
-      },
-
-      students: {
-        total: classroomStudents.length,
-        submitted: {
-          count: question.submissions.length,
-          list: question.submissions,
-        },
-        pending: {
-          count: pending.length,
-          list: pending,
-        },
-      },
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-

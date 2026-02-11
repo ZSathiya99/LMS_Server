@@ -25,6 +25,7 @@ export const getClassMembers = async (req, res) => {
     const members = await ClassroomMember.find({ sectionId })
       .select('userId userModel role joinMethod createdAt')
       .populate('userId', 'firstName lastName email profileImage');
+    console.log(members);
     const faculty = [];
     const students = [];
 
