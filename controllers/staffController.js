@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import Student from '../models/Student.js';
 import AdminAllocation from '../models/adminAllocationModel.js';
 import ClassroomInvitation from '../models/ClassroomInvitation.js';
 import ClassroomMember from '../models/ClassroomMembers.js';
@@ -319,6 +320,13 @@ export const respondInvitation = async (req, res) => {
 
     if (userRole === 'faculty') {
       userId = req.user.facultyId;
+    }
+    if (userRole === 'student') {
+      const studentId = await Student.findOne({ email: userEmail });
+      if (!studentId) {
+        return res.status(404).json({ message: 'Student not found' });
+      }
+      userId = studentId._id;
     }
 
     // 1️⃣ Find invitation
