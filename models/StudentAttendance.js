@@ -6,22 +6,36 @@ const studentAttendanceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Student",
       required: true,
+      index: true,
     },
 
     subjectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Subject",
       required: true,
+      index: true,
     },
 
+    // ✅ Better to store Date type instead of String
     date: {
-      type: String, // YYYY-MM-DD
+      type: Date,
       required: true,
     },
 
     hour: {
-      type: String, // "1st Hour", "2nd Hour"
+      type: String,
       required: true,
+      trim: true,
+      enum: [
+        "1stHour",
+        "2ndHour",
+        "3rdHour",
+        "4thHour",
+        "5thHour",
+        "6thHour",
+        "7thHour",
+        "8thHour",
+      ],
     },
 
     status: {
@@ -36,10 +50,12 @@ const studentAttendanceSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-// 🔥 UNIQUE — Only one record per student per hour per subject per day
+// ✅ Unique: One attendance per student per subject per hour per day
 studentAttendanceSchema.index(
   { studentId: 1, subjectId: 1, date: 1, hour: 1 },
   { unique: true }

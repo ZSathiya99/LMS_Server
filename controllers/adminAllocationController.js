@@ -27,6 +27,7 @@ export const addAdminAllocation = async (req, res) => {
 
 // ✅ POST /api/adminAllocation/subjects
 
+
 export const allocateSubjects = async (req, res) => {
   try {
     const {
@@ -35,100 +36,119 @@ export const allocateSubjects = async (req, res) => {
       semester,
       semesterType,
       regulation,
-      subjects
+      subjects,
     } = req.body;
 
-    // ✅ Validation
+    // ================================
+    // ✅ VALIDATION
+    // ================================
     if (
       !department ||
       !subjectType ||
       !semester ||
       !semesterType ||
       !regulation ||
-      !Array.isArray(subjects)
+      !Array.isArray(subjects) ||
+      subjects.length === 0
     ) {
       return res.status(400).json({
-        message: 'All fields are required'
+        message: "All fields are required",
       });
     }
 
-    const safe = (v) => (v ? v.toString().trim() : '');
+    const safe = (v) => (v ? v.toString().trim() : "");
 
+    // ================================
+    // 🔍 CHECK EXISTING ALLOCATION
+    // ================================
     let allocation = await AdminAllocation.findOne({
-      department: { $regex: safe(department), $options: 'i' },
-      subjectType: { $regex: safe(subjectType), $options: 'i' },
+      department: { $regex: safe(department), $options: "i" },
+      subjectType: { $regex: safe(subjectType), $options: "i" },
       semester: Number(semester),
-      semesterType: { $regex: safe(semesterType), $options: 'i' },
-      regulation: { $regex: safe(regulation), $options: 'i' }
+      semesterType: { $regex: safe(semesterType), $options: "i" },
+      regulation: { $regex: safe(regulation), $options: "i" },
     });
 
+    // ================================
+    // 🧹 CLEAN SUBJECT DATA
+    // ================================
     const cleanSubjects = subjects.map((s) => ({
-      code: s.code,
-      subject: s.subject,
-      credits: s.credits
+      code: s.code?.toString().trim(),
+      subject: s.subject?.toString().trim(),
+      subjectId: s.subjectId || s._id, // support both
+      credits: Number(s.credits),
     }));
 
     /* =====================================================
-        🆕 CREATE
+        🆕 CREATE NEW ALLOCATION
     ===================================================== */
     if (!allocation) {
       allocation = new AdminAllocation({
-        department,
-        subjectType,
+        department: safe(department),
+        subjectType: safe(subjectType),
         semester: Number(semester),
-        semesterType,
-        regulation,
+        semesterType: safe(semesterType),
+        regulation: safe(regulation),
         subjects: cleanSubjects.map((s) => ({
           ...s,
-          sections: []
-        }))
+          sections: [],
+        })),
       });
 
       await allocation.save();
 
       return res.status(201).json({
-        message: 'Subjects allocated successfully',
-        allocation
+        message: "Subjects allocated successfully",
+        allocation,
       });
     }
 
     /* =====================================================
-        🔄 UPDATE (preserve sections)
+        🔄 UPDATE EXISTING ALLOCATION
+        (Preserve Sections + Add subjectId)
     ===================================================== */
     const updatedSubjects = cleanSubjects.map((newSub) => {
-      const existing = allocation.subjects.find((s) => s.code === newSub.code);
+      const existing = allocation.subjects.find(
+        (s) => s.code === newSub.code
+      );
 
       return {
         code: newSub.code,
         subject: newSub.subject,
+        subjectId: newSub.subjectId,
         credits: newSub.credits,
-        // We keep existing sections so their _ids remain constant
-        sections: existing ? existing.sections : []
+        sections: existing ? existing.sections : [],
       };
     });
 
     allocation.subjects = updatedSubjects;
-    allocation.markModified('subjects');
-    // Save first to ensure all section _ids are locked in
+    allocation.markModified("subjects");
+
     await allocation.save();
 
     return res.status(200).json({
-      message: 'Subjects updated and staff synced successfully',
-      allocation
+      message: "Subjects updated successfully",
+      allocation,
     });
   } catch (error) {
-    console.error('Allocate Subjects Error:', error);
-    return res.status(500).json({ message: error.message });
+    console.error("Allocate Subjects Error:", error);
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
 // GET /api/admin-allocation/subjects
+
+
 export const getAllocatedSubjects = async (req, res) => {
   try {
     const { department, subjectType, semester, semesterType, regulation } =
       req.query;
 
-    // Validation
+    // ===============================
+    // ✅ VALIDATION
+    // ===============================
     if (
       !department ||
       !subjectType ||
@@ -137,41 +157,66 @@ export const getAllocatedSubjects = async (req, res) => {
       !regulation
     ) {
       return res.status(400).json({
-        message: 'All query parameters are required'
+        message: "All query parameters are required",
       });
     }
 
-    const safe = (v) => (v ? v.toString().trim() : '');
+    const safe = (v) => (v ? v.toString().trim() : "");
 
+    // ===============================
+    // 🔍 FIND ALLOCATION
+    // ===============================
     const allocation = await AdminAllocation.findOne({
-      department: { $regex: safe(department), $options: 'i' },
-      subjectType: { $regex: safe(subjectType), $options: 'i' },
+      department: { $regex: safe(department), $options: "i" },
+      subjectType: { $regex: safe(subjectType), $options: "i" },
       semester: Number(semester),
-      semesterType: { $regex: safe(semesterType), $options: 'i' },
-      regulation: { $regex: safe(regulation), $options: 'i' }
-    });
+      semesterType: { $regex: safe(semesterType), $options: "i" },
+      regulation: { $regex: safe(regulation), $options: "i" },
+    }).populate("subjects.subjectId"); // ✅ populate subject details
 
-    // ✅ IMPORTANT FIX: Do NOT return 404
+    // ===============================
+    // 🟡 IF NOT FOUND → RETURN EMPTY
+    // ===============================
     if (!allocation) {
       return res.status(200).json({
-        message: 'No subjects allocated yet',
+        message: "No subjects allocated yet",
         allocation: {
           department,
           subjectType,
           semester: Number(semester),
           semesterType,
           regulation,
-          subjects: []
-        }
+          subjects: [],
+        },
       });
     }
 
+    // ===============================
+    // ✅ FORMAT RESPONSE CLEANLY
+    // ===============================
+    const formattedSubjects = allocation.subjects.map((sub) => ({
+      _id: sub._id,
+      code: sub.code,
+      subject: sub.subject,
+      subjectId: sub.subjectId?._id || sub.subjectId, // ✅ always return ID
+      credits: sub.credits,
+      sections: sub.sections,
+    }));
+
     return res.status(200).json({
-      message: 'Allocated subjects fetched successfully',
-      allocation
+      message: "Allocated subjects fetched successfully",
+      allocation: {
+        _id: allocation._id,
+        department: allocation.department,
+        subjectType: allocation.subjectType,
+        semester: allocation.semester,
+        semesterType: allocation.semesterType,
+        regulation: allocation.regulation,
+        subjects: formattedSubjects,
+      },
     });
   } catch (error) {
-    console.error('Get Allocated Subjects Error:', error);
+    console.error("Get Allocated Subjects Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };

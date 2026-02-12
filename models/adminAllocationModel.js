@@ -32,6 +32,11 @@ const SectionSchema = new mongoose.Schema(
 const SubjectSchema = new mongoose.Schema({
   code: String,
   subject: String,
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref:'Subject',
+    required: true
+  },
   sections: [SectionSchema]
 });
 

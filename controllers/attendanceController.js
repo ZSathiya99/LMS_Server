@@ -1,40 +1,38 @@
+import mongoose from "mongoose";
 import Student from "../models/Student.js";
 import StudentAttendance from "../models/StudentAttendance.js";
-
+import Subject from "../models/subjectModel.js";
 
 /* =========================================================
-   POST — MARK ATTENDANCE (Present / Absent / On-Duty)
+   POST — MARK SINGLE ATTENDANCE
 ========================================================= */
 export const markAttendance = async (req, res) => {
   try {
     let { studentId, subjectId, date, hour, status } = req.body;
-
-    const staffId = req.user.facultyId;
+    const facultyId = req.user.facultyId;
 
     if (!studentId || !subjectId || !date || !hour || !status) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    // 🔥 FORCE YYYY-MM-DD FORMAT
     const formattedDate = new Date(date).toISOString().split("T")[0];
-
-    studentId = studentId.toString().trim();
-    subjectId = subjectId.toString().trim();
 
     const attendance = await StudentAttendance.findOneAndUpdate(
       {
-        studentId,
-        subjectId,
+        studentId: studentId.toString().trim(),
+        subjectId: subjectId.toString().trim(),
         date: formattedDate,
-        hour,
+        hour: hour.toString().trim(),
       },
       {
-        studentId,
-        subjectId,
-        date: formattedDate,
-        hour,
-        status,
-        markedBy: staffId.toString(),
+        $set: {
+          studentId: studentId.toString().trim(),
+          subjectId: subjectId.toString().trim(),
+          date: formattedDate,
+          hour: hour.toString().trim(),
+          status,
+          markedBy: facultyId.toString(),
+        },
       },
       { upsert: true, new: true }
     );
@@ -43,26 +41,24 @@ export const markAttendance = async (req, res) => {
       message: `Marked ${status} successfully`,
       attendance,
     });
-
   } catch (error) {
     console.error("Mark Attendance Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
 
-
-//bulk 
+/* =========================================================
+   POST — BULK ATTENDANCE
+========================================================= */
 export const markBulkAttendance = async (req, res) => {
   try {
     const { subjectId, date, hour, records } = req.body;
-
-    const staffId = req.user.facultyId;
+    const facultyId = req.user.facultyId;
 
     if (!subjectId || !date || !hour || !records?.length) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    // 🔥 Force YYYY-MM-DD format
     const formattedDate = new Date(date).toISOString().split("T")[0];
 
     const bulkOps = records.map((rec) => ({
@@ -71,16 +67,16 @@ export const markBulkAttendance = async (req, res) => {
           studentId: rec.studentId.toString().trim(),
           subjectId: subjectId.toString().trim(),
           date: formattedDate,
-          hour,
+          hour: hour.toString().trim(),
         },
         update: {
           $set: {
             studentId: rec.studentId.toString().trim(),
             subjectId: subjectId.toString().trim(),
             date: formattedDate,
-            hour,
+            hour: hour.toString().trim(),
             status: rec.status,
-            markedBy: staffId.toString(),
+            markedBy: facultyId.toString(),
           },
         },
         upsert: true,
@@ -93,19 +89,15 @@ export const markBulkAttendance = async (req, res) => {
       message: "Attendance saved successfully",
       total: records.length,
     });
-
   } catch (error) {
     console.error("Bulk Attendance Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
 
-
-
-
-
-//Date-wise Attendance Filter API
-
+/* =========================================================
+   GET — DATE-WISE FILTER
+========================================================= */
 export const getAttendanceByDate = async (req, res) => {
   try {
     const { date, subjectId, hour } = req.query;
@@ -117,28 +109,24 @@ export const getAttendanceByDate = async (req, res) => {
     const formattedDate = new Date(date).toISOString().split("T")[0];
 
     let filter = { date: formattedDate };
-
     if (subjectId) filter.subjectId = subjectId;
     if (hour) filter.hour = hour;
 
     const attendance = await StudentAttendance.find(filter);
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Attendance fetched successfully",
       count: attendance.length,
       attendance,
     });
-
   } catch (error) {
     console.error("Get Attendance Error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
-
-
 /* =========================================================
-   GET — STUDENT LIST WITH STATUS (DEFAULT ABSENT)
+   GET — STUDENTS WITH STATUS
 ========================================================= */
 export const getAttendanceStudents = async (req, res) => {
   try {
@@ -153,54 +141,51 @@ export const getAttendanceStudents = async (req, res) => {
     }
 
     const students = await Student.find({
-      department,
-      year,
-      section,
+      department: { $regex: new RegExp(`^${department.trim()}$`, "i") },
+      year: { $regex: new RegExp(year.trim(), "i") }, // Handles "2nd Year"
+      section: { $regex: new RegExp(`^${section.trim()}$`, "i") },
     }).sort({ rollNumber: 1 });
 
     let statusMap = {};
 
     if (date && hour) {
+      const formattedDate = new Date(date).toISOString().split("T")[0];
+
       const attendance = await StudentAttendance.find({
         subjectId: subjectId.toString().trim(),
-        date: date.toString().trim(),
+        date: formattedDate,
         hour: hour.toString().trim(),
       });
 
-      attendance.forEach(a => {
+      attendance.forEach((a) => {
         statusMap[a.studentId.toString()] = a.status;
       });
     }
 
-    const result = students.map(s => ({
+    const result = students.map((s) => ({
       _id: s._id,
       rollNumber: s.rollNumber,
       name: `${s.firstName} ${s.lastName}`,
-      status: statusMap[s._id.toString()] || "null",
+      status: statusMap[s._id.toString()] || "Absent",
     }));
 
     return res.status(200).json({
       total: result.length,
       students: result,
     });
-
   } catch (error) {
     console.error("Get Attendance Students Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
 
-
-
+/* =========================================================
+   GET — PRINT ATTENDANCE
+========================================================= */
 export const getAttendancePrint = async (req, res) => {
   try {
-    const facultyId = req.user.facultyId; // from verifyToken
-
     let { department, year, section, subjectId, date, hour } = req.query;
 
-    // ==============================
-    // 1️⃣ VALIDATION
-    // ==============================
     if (!department || !year || !section || !subjectId || !date || !hour) {
       return res.status(400).json({
         message: "All query parameters are required",
@@ -211,93 +196,71 @@ export const getAttendancePrint = async (req, res) => {
       section = section.replace("Section ", "");
     }
 
-    // ==============================
-    // 2️⃣ OPTIONAL: CHECK SUBJECT BELONGS TO FACULTY
-    // ==============================
-    const subject = await Subject.findOne({
-      _id: subjectId,
-      facultyId: facultyId,
-    });
-
+    const subject = await Subject.findById(subjectId);
     if (!subject) {
-      return res.status(403).json({
-        message: "You are not assigned to this subject",
-      });
+      return res.status(404).json({ message: "Subject not found" });
     }
 
-    // ==============================
-    // 3️⃣ GET STUDENTS
-    // ==============================
     const students = await Student.find({
-      department,
-      year,
-      section,
+      department: { $regex: new RegExp(`^${department.trim()}$`, "i") },
+      year: { $regex: new RegExp(year.trim(), "i") },
+      section: { $regex: new RegExp(`^${section.trim()}$`, "i") },
     }).sort({ rollNumber: 1 });
 
     if (!students.length) {
-      return res.status(404).json({
-        message: "No students found",
-      });
+      return res.status(404).json({ message: "No students found" });
     }
 
-    // ==============================
-    // 4️⃣ GET ATTENDANCE
-    // ==============================
-    const attendanceList = await StudentAttendance.find({
+    const formattedDate = new Date(date).toISOString().split("T")[0];
+
+    const attendanceRecords = await StudentAttendance.find({
       subjectId,
-      date,
-      hour,
+      date: formattedDate,
+      hour: hour.toString().trim(),
     });
 
     let statusMap = {};
-    attendanceList.forEach((a) => {
-      statusMap[a.studentId.toString()] = a.status;
+    attendanceRecords.forEach((record) => {
+      statusMap[record.studentId.toString()] = record.status;
     });
 
-    // ==============================
-    // 5️⃣ FORMAT DATA
-    // ==============================
     let presentCount = 0;
     let absentCount = 0;
 
-    const result = students.map((s, index) => {
-      const status = statusMap[s._id.toString()] || "Absent";
-
+    const attendanceList = students.map((student, index) => {
+      const status = statusMap[student._id.toString()] || "Absent";
       if (status === "Present") presentCount++;
       else absentCount++;
 
       return {
         sno: index + 1,
-        rollNumber: s.rollNumber,
-        name: `${s.firstName} ${s.lastName}`,
+        rollNumber: student.rollNumber,
+        name: `${student.firstName} ${student.lastName}`,
         status,
       };
     });
 
-    // ==============================
-    // 6️⃣ FINAL RESPONSE (PRINT READY)
-    // ==============================
     return res.status(200).json({
       printDetails: {
-        faculty: req.user.name,
+        facultyName: req.user.name,
         department,
         year,
         section,
-        subject: subject.subjectName,
-        date,
+        subjectName: subject.subject,
+        subjectCode: subject.code,
+        date: formattedDate,
         hour,
         totalStudents: students.length,
         present: presentCount,
         absent: absentCount,
       },
-      attendanceList: result,
+      attendanceList,
     });
-
   } catch (error) {
     console.error("Attendance Print Error:", error);
     return res.status(500).json({
       message: "Server Error",
+      error: error.message,
     });
   }
 };
-
