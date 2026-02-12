@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import Student from '../models/Student.js';
+import Faculty from '../models/Faculty.js';
 import AdminAllocation from '../models/adminAllocationModel.js';
 import ClassroomInvitation from '../models/ClassroomInvitation.js';
 import ClassroomMember from '../models/ClassroomMembers.js';
@@ -91,24 +92,52 @@ export const getStaffSubjectPlanning = async (req, res) => {
 
 export const joinClassroom = async (req, res) => {
   try {
-    const studentId = req.user.id;
-    const { sectionId } = req.params;
-    const { code } = req.body;
+    const { code } = req.params;
 
-    if (!sectionId || !code) {
+    if (!code) {
       return res.status(400).json({
-        message: 'Section ID and classroom code are required'
+        message: 'Classroom code is required'
       });
     }
 
-    // 🔍 find section by _id
+    const userEmail = req.user.email;
+    const userRole = req.user.role; // 👈 make sure this exists in JWT
+
+    let user = null;
+    let userModel = '';
+    let role = '';
+
+    // 🔥 Detect user type
+    if (userRole === 'student') {
+      user = await Student.findOne({ email: userEmail });
+      userModel = 'Student';
+      role = 'student';
+    } else if (userRole === 'faculty') {
+      user = await Faculty.findOne({ email: userEmail });
+      userModel = 'Faculty';
+      role = 'faculty';
+    } else {
+      return res.status(403).json({
+        message: 'Unauthorized role'
+      });
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        message: `${userRole} not found`
+      });
+    }
+
+    const userId = user._id;
+
+    // 🔍 Find allocation that contains section with this classroomCode
     const allocation = await AdminAllocation.findOne({
-      'subjects.sections._id': sectionId
+      'subjects.sections.classroomCode': code
     });
 
     if (!allocation) {
       return res.status(404).json({
-        message: 'Classroom not found'
+        message: 'Invalid classroom code'
       });
     }
 
@@ -117,25 +146,26 @@ export const joinClassroom = async (req, res) => {
 
     for (const subject of allocation.subjects) {
       for (const section of subject.sections) {
-        if (section._id.toString() === sectionId) {
+        if (section.classroomCode === code) {
           sectionFound = section;
           subjectFound = subject;
           break;
         }
       }
+      if (sectionFound) break;
     }
 
     if (!sectionFound) {
-      return res.status(404).json({ message: 'Classroom not found' });
+      return res.status(404).json({
+        message: 'Invalid classroom code'
+      });
     }
 
-    if (sectionFound.classroomCode !== code) {
-      return res.status(403).json({ message: 'Invalid classroom code' });
-    }
+    const sectionId = sectionFound._id;
 
     const alreadyJoined = await ClassroomMember.findOne({
       sectionId,
-      userId: studentId
+      userId
     });
 
     if (alreadyJoined) {
@@ -144,11 +174,12 @@ export const joinClassroom = async (req, res) => {
       });
     }
 
+    // ✅ Create membership
     await ClassroomMember.create({
       sectionId,
-      userId: studentId,
-      userModel: 'Student',
-      role: 'student',
+      userId,
+      userModel,
+      role,
       joinMethod: 'self'
     });
 

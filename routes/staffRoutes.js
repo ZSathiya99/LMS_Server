@@ -12,7 +12,7 @@ const router = express.Router();
 
 // 👨‍🏫 Staff Subject Planning
 router.get('/staff/subject-planning', verifyToken, getStaffSubjectPlanning);
-router.post('/staff/classroom/:sectionId/join', verifyToken, joinClassroom);
+router.post('/classroom/:code/join', verifyToken, joinClassroom);
 router.post('/staff/classroom/:sectionId/invite', verifyToken, sendInvitation);
 router.post('/classroom/invitations/respond', verifyToken, respondInvitation);
 
