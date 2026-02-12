@@ -231,23 +231,42 @@ export const getSubjectsByDepartment = async (req, res) => {
     const { department } = req.params;
 
     if (!department) {
-      return res.status(400).json({ message: "Department is required" });
+      return res.status(400).json({
+        message: "Department is required",
+      });
     }
 
-    const subjects = await Subject.find({ department }).select("code subject");
-    const faculty = await Faculty.find({ department }).select(
+    // Case-insensitive match (recommended)
+    const subjects = await Subject.find({
+      department: { $regex: new RegExp(`^${department}$`, "i") },
+    }).select("code subject type department"); // ✅ added type
+
+    const faculty = await Faculty.find({
+      department: { $regex: new RegExp(`^${department}$`, "i") },
+    }).select(
       "profileImg salutation firstName lastName email department"
     );
 
     if (!subjects.length && !faculty.length) {
-      return res.status(404).json({ message: "No data found for this department" });
+      return res.status(404).json({
+        message: "No data found for this department",
+      });
     }
 
-    res.status(200).json({ subjects, faculty });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(200).json({
+      totalSubjects: subjects.length,
+      totalFaculty: faculty.length,
+      subjects,
+      faculty,
+    });
+
+  } catch (error) {   // ✅ fixed typo
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
+
 //update
 // ✏️ UPDATE Subject
 export const updateSubject = async (req, res) => {
