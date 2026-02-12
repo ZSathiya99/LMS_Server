@@ -192,3 +192,112 @@ export const getAttendanceStudents = async (req, res) => {
 
 
 
+export const getAttendancePrint = async (req, res) => {
+  try {
+    const facultyId = req.user.facultyId; // from verifyToken
+
+    let { department, year, section, subjectId, date, hour } = req.query;
+
+    // ==============================
+    // 1️⃣ VALIDATION
+    // ==============================
+    if (!department || !year || !section || !subjectId || !date || !hour) {
+      return res.status(400).json({
+        message: "All query parameters are required",
+      });
+    }
+
+    if (section.startsWith("Section ")) {
+      section = section.replace("Section ", "");
+    }
+
+    // ==============================
+    // 2️⃣ OPTIONAL: CHECK SUBJECT BELONGS TO FACULTY
+    // ==============================
+    const subject = await Subject.findOne({
+      _id: subjectId,
+      facultyId: facultyId,
+    });
+
+    if (!subject) {
+      return res.status(403).json({
+        message: "You are not assigned to this subject",
+      });
+    }
+
+    // ==============================
+    // 3️⃣ GET STUDENTS
+    // ==============================
+    const students = await Student.find({
+      department,
+      year,
+      section,
+    }).sort({ rollNumber: 1 });
+
+    if (!students.length) {
+      return res.status(404).json({
+        message: "No students found",
+      });
+    }
+
+    // ==============================
+    // 4️⃣ GET ATTENDANCE
+    // ==============================
+    const attendanceList = await StudentAttendance.find({
+      subjectId,
+      date,
+      hour,
+    });
+
+    let statusMap = {};
+    attendanceList.forEach((a) => {
+      statusMap[a.studentId.toString()] = a.status;
+    });
+
+    // ==============================
+    // 5️⃣ FORMAT DATA
+    // ==============================
+    let presentCount = 0;
+    let absentCount = 0;
+
+    const result = students.map((s, index) => {
+      const status = statusMap[s._id.toString()] || "Absent";
+
+      if (status === "Present") presentCount++;
+      else absentCount++;
+
+      return {
+        sno: index + 1,
+        rollNumber: s.rollNumber,
+        name: `${s.firstName} ${s.lastName}`,
+        status,
+      };
+    });
+
+    // ==============================
+    // 6️⃣ FINAL RESPONSE (PRINT READY)
+    // ==============================
+    return res.status(200).json({
+      printDetails: {
+        faculty: req.user.name,
+        department,
+        year,
+        section,
+        subject: subject.subjectName,
+        date,
+        hour,
+        totalStudents: students.length,
+        present: presentCount,
+        absent: absentCount,
+      },
+      attendanceList: result,
+    });
+
+  } catch (error) {
+    console.error("Attendance Print Error:", error);
+    return res.status(500).json({
+      message: "Server Error",
+    });
+  }
+};
+

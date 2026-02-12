@@ -31,7 +31,9 @@ export const getDepartmentSubjects = async (req, res) => {
 export const uploadSubjectsFromExcel = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: "No Excel file uploaded" });
+      return res.status(400).json({
+        message: "No Excel file uploaded",
+      });
     }
 
     const workbook = XLSX.readFile(req.file.path);
@@ -39,32 +41,62 @@ export const uploadSubjectsFromExcel = async (req, res) => {
 
     const sheetData = XLSX.utils.sheet_to_json(
       workbook.Sheets[sheetName],
-      { defval: "" } // prevents undefined values
+      { defval: "" }
     );
 
     if (!sheetData.length) {
-      return res.status(400).json({ message: "Excel file is empty" });
+      return res.status(400).json({
+        message: "Excel file is empty",
+      });
+    }
+
+    // =====================================
+    // ✅ 1️⃣ CHECK REQUIRED HEADERS
+    // =====================================
+    const requiredHeaders = ["department", "code", "subject"];
+    const excelHeaders = Object.keys(sheetData[0]);
+
+    const missingHeaders = requiredHeaders.filter(
+      header => !excelHeaders.includes(header)
+    );
+
+    if (missingHeaders.length > 0) {
+      return res.status(400).json({
+        message: "Excel header mismatch",
+        missingHeaders,
+        expectedFormat: requiredHeaders,
+      });
     }
 
     const insertedSubjects = [];
     const duplicateSubjects = [];
+    const rowErrors = [];
 
-    for (const row of sheetData) {
+    // =====================================
+    // ✅ 2️⃣ VALIDATE EACH ROW
+    // =====================================
+    for (let i = 0; i < sheetData.length; i++) {
+      const row = sheetData[i];
 
-      // ✅ MATCH YOUR LOWERCASE HEADERS
       const department = row.department?.toString().trim();
       const code = row.code?.toString().trim();
       const subject = row.subject?.toString().trim();
 
-      if (!department || !code || !subject) continue;
+      // 🚨 Empty field validation
+      if (!department || !code || !subject) {
+        rowErrors.push({
+          row: i + 2, // +2 because excel starts at 1 + header row
+          message: "Missing required field",
+          data: row,
+        });
+        continue;
+      }
 
-      const existing = await Subject.findOne({
-        code,
-        department,
-      });
+      const existing = await Subject.findOne({ code, department });
 
       if (existing) {
         duplicateSubjects.push({
+          row: i + 2,
           department,
           code,
           subject,
@@ -82,22 +114,28 @@ export const uploadSubjectsFromExcel = async (req, res) => {
       insertedSubjects.push(newSubject);
     }
 
+    // =====================================
+    // ✅ FINAL RESPONSE
+    // =====================================
     return res.status(201).json({
-      message:
-        duplicateSubjects.length > 0
-          ? "Some subjects already exist"
-          : "Subjects uploaded successfully",
+      message: "Excel processed",
       insertedCount: insertedSubjects.length,
       duplicateCount: duplicateSubjects.length,
+      errorCount: rowErrors.length,
       insertedSubjects,
       duplicateSubjects,
+      rowErrors,
     });
 
   } catch (error) {
     console.error("Excel Upload Error:", error);
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
   }
 };
+
 
 
 
