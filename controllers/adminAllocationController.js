@@ -144,6 +144,9 @@ export const getAllocatedSubjects = async (req, res) => {
     const { department, subjectType, semester, semesterType, regulation } =
       req.query;
 
+    // ==========================================
+    // ✅ VALIDATION
+    // ==========================================
     if (!department || !semester || !semesterType || !regulation) {
       return res.status(400).json({
         message: "Required query parameters missing",
@@ -152,16 +155,26 @@ export const getAllocatedSubjects = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
+    // ==========================================
+    // ✅ FETCH ALLOCATION + POPULATE TYPE
+    // ==========================================
     const allocation = await AdminAllocation.findOne({
       department: { $regex: safe(department), $options: "i" },
       semester: Number(semester),
       semesterType: { $regex: safe(semesterType), $options: "i" },
       regulation: { $regex: safe(regulation), $options: "i" },
-    }).populate("subjects.subjectId");
+    }).populate({
+      path: "subjects.subjectId",
+      select: "code subject type department",
+    });
 
+    // ==========================================
+    // ✅ IF NO ALLOCATION
+    // ==========================================
     if (!allocation) {
       return res.status(200).json({
         message: "No subjects allocated yet",
+        total: 0,
         allocation: {
           department,
           semester: Number(semester),
@@ -173,24 +186,30 @@ export const getAllocatedSubjects = async (req, res) => {
     }
 
     // ==========================================
-    // ✅ FILTER SUBJECTS BY TYPE (Lab / Theory)
+    // ✅ FILTER BY TYPE (Lab / Theory)
     // ==========================================
     let filteredSubjects = allocation.subjects;
 
     if (subjectType) {
       filteredSubjects = allocation.subjects.filter((sub) => {
-        const type = sub.subjectId?.type || sub.type;
+        const type = sub.subjectId?.type;
 
-        return type?.toLowerCase() === subjectType.toLowerCase();
+        return (
+          type &&
+          type.toLowerCase().trim() === subjectType.toLowerCase().trim()
+        );
       });
     }
 
+    // ==========================================
+    // ✅ FORMAT RESPONSE
+    // ==========================================
     const formattedSubjects = filteredSubjects.map((sub) => ({
       _id: sub._id,
-      code: sub.code,
-      subject: sub.subject,
-      subjectId: sub.subjectId?._id || sub.subjectId,
-      type: sub.subjectId?.type || sub.type,
+      code: sub.subjectId?.code || sub.code,
+      subject: sub.subjectId?.subject || sub.subject,
+      subjectId: sub.subjectId?._id,
+      type: sub.subjectId?.type,
       credits: sub.credits,
       sections: sub.sections,
     }));
@@ -215,6 +234,7 @@ export const getAllocatedSubjects = async (req, res) => {
     });
   }
 };
+
 
 
 export const getHodDashboardSubjects = async (req, res) => {
