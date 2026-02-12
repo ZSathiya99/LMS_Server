@@ -187,17 +187,42 @@ export const uploadSubjectsFromExcel = async (req, res) => {
 
 export const getAllSubjects = async (req, res) => {
   try {
-    const subjects = await Subject.find().sort({ department: 1, code: 1 });
+    const { department, type } = req.query;
 
-    res.status(200).json({
-      total: subjects.length,
-      subjects,
+    let filter = {};
+
+    if (department) {
+      filter.department = department;
+    }
+
+    if (type) {
+      filter.type = type;
+    }
+
+    const subjects = await Subject.find(filter)
+      .sort({ department: 1, code: 1 });
+
+    const formattedSubjects = subjects.map((sub) => ({
+      _id: sub._id,
+      code: sub.code,
+      subject: sub.subject,
+      department: sub.department,
+      type: sub.type, // ✅ Added
+      createdAt: sub.createdAt,
+    }));
+
+    return res.status(200).json({
+      total: formattedSubjects.length,
+      subjects: formattedSubjects,
     });
+
   } catch (error) {
     console.error("Get All Subjects Error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 
 
