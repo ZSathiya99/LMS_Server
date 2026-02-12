@@ -276,40 +276,37 @@ export const getHodDashboardData = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : '');
 
-    // Find allocation for HOD dashboard
     const allocation = await AdminAllocation.findOne({
       department: { $regex: safe(department), $options: 'i' },
       subjectType: { $regex: safe(subjectType), $options: 'i' },
       semester: Number(semester),
       semesterType: { $regex: safe(semesterType), $options: 'i' },
-      regulation: { $regex: safe(regulation.toString()), $options: 'i' }
+      regulation: { $regex: safe(regulation?.toString()), $options: 'i' }
     });
 
-    // Default section list
     const defaultSections = [
       { sectionName: 'Section A' },
       { sectionName: 'Section B' },
       { sectionName: 'Section C' }
     ];
 
-    // Prepare subjects + merged sections
     const subjects = allocation
       ? allocation.subjects.map((sub) => {
           const mergedSections = defaultSections.map((def) => {
-            // find existing section (if already created)
             const existing = sub.sections.find(
               (s) => s.sectionName === def.sectionName
             );
 
             return {
               sectionName: def.sectionName,
-              sectionId: existing?._id || null, // ⭐ ADD SECTION ID HERE
+              sectionId: existing?._id || null,
               staff: existing?.staff || null
             };
           });
 
           return {
-            id: sub._id,
+            id: sub._id,               // allocation subject id
+            subjectId: sub.subjectId,  // ✅ ORIGINAL SUBJECT ID ADDED
             code: sub.code,
             subject: sub.subject,
             semesterType: allocation.semesterType,
@@ -318,7 +315,6 @@ export const getHodDashboardData = async (req, res) => {
         })
       : [];
 
-    // Faculty List
     const facultyRaw = await Faculty.find({
       department: { $regex: safe(department), $options: 'i' }
     }).select('firstName lastName email designation role');
@@ -331,17 +327,18 @@ export const getHodDashboardData = async (req, res) => {
       role: f.role
     }));
 
-    // Final response
     res.json({
       semesterType: allocation?.semesterType || null,
       subjects,
       faculty: facultyList
     });
+
   } catch (error) {
     console.error('Dashboard Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ✔ POST → Assign staff
 // ✔ PUT → Update staff
