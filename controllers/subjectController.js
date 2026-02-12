@@ -28,6 +28,7 @@ export const getDepartmentSubjects = async (req, res) => {
 
 
 // 📦 Upload Subjects from Excel
+
 export const uploadSubjectsFromExcel = async (req, res) => {
   try {
     if (!req.file) {
@@ -51,13 +52,13 @@ export const uploadSubjectsFromExcel = async (req, res) => {
     }
 
     // =====================================
-    // ✅ 1️⃣ CHECK REQUIRED HEADERS
+    // ✅ CHECK REQUIRED HEADERS
     // =====================================
-    const requiredHeaders = ["department", "code", "subject"];
+    const requiredHeaders = ["code", "subject", "department", "type"];
     const excelHeaders = Object.keys(sheetData[0]);
 
     const missingHeaders = requiredHeaders.filter(
-      header => !excelHeaders.includes(header)
+      (header) => !excelHeaders.includes(header)
     );
 
     if (missingHeaders.length > 0) {
@@ -72,43 +73,85 @@ export const uploadSubjectsFromExcel = async (req, res) => {
     const duplicateSubjects = [];
     const rowErrors = [];
 
+    const allowedTypes = ["Theory", "Lab", "Theory & Lab"];
+
     // =====================================
-    // ✅ 2️⃣ VALIDATE EACH ROW
+    // ✅ PROCESS EACH ROW
     // =====================================
     for (let i = 0; i < sheetData.length; i++) {
       const row = sheetData[i];
 
-      const department = row.department?.toString().trim();
       const code = row.code?.toString().trim();
       const subject = row.subject?.toString().trim();
+      const department = row.department?.toString().trim();
+      const typeRaw = row.type?.toString().trim();
 
-      // 🚨 Empty field validation
-      if (!department || !code || !subject) {
+      // 🚨 REQUIRED FIELD CHECK
+      if (!code || !subject || !department || !typeRaw) {
         rowErrors.push({
-          row: i + 2, // +2 because excel starts at 1 + header row
+          row: i + 2,
           message: "Missing required field",
           data: row,
         });
         continue;
       }
 
-      const existing = await Subject.findOne({ code, department });
+      // =====================================
+      // ✅ NORMALIZE TYPE (CASE INSENSITIVE)
+      // =====================================
+      let normalizedType = null;
 
-      if (existing) {
-        duplicateSubjects.push({
+      const lowerType = typeRaw.toLowerCase();
+
+      if (lowerType === "theory") {
+        normalizedType = "Theory";
+      } else if (lowerType === "lab") {
+        normalizedType = "Lab";
+      } else if (
+        lowerType === "theory & lab" ||
+        lowerType === "theory and lab"
+      ) {
+        normalizedType = "Theory & Lab";
+      }
+
+      if (!normalizedType) {
+        rowErrors.push({
           row: i + 2,
-          department,
-          code,
-          subject,
-          reason: "Already subject added",
+          message: "Invalid subject type",
+          allowedTypes,
+          given: typeRaw,
         });
         continue;
       }
 
-      const newSubject = await Subject.create({
+      // =====================================
+      // ✅ DUPLICATE CHECK
+      // =====================================
+      const existing = await Subject.findOne({
+        code,
         department,
+      });
+
+      if (existing) {
+        duplicateSubjects.push({
+          row: i + 2,
+          code,
+          department,
+          subject,
+          type: normalizedType,
+          reason: "Subject already exists",
+        });
+        continue;
+      }
+
+      // =====================================
+      // ✅ CREATE SUBJECT
+      // =====================================
+      const newSubject = await Subject.create({
         code,
         subject,
+        department,
+        type: normalizedType,
       });
 
       insertedSubjects.push(newSubject);
@@ -140,19 +183,46 @@ export const uploadSubjectsFromExcel = async (req, res) => {
 
 
 
+
+
 export const getAllSubjects = async (req, res) => {
   try {
-    const subjects = await Subject.find().sort({ department: 1, code: 1 });
+    const { department, type } = req.query;
 
-    res.status(200).json({
-      total: subjects.length,
-      subjects,
+    let filter = {};
+
+    if (department) {
+      filter.department = department;
+    }
+
+    if (type) {
+      filter.type = type;
+    }
+
+    const subjects = await Subject.find(filter)
+      .sort({ department: 1, code: 1 });
+
+    const formattedSubjects = subjects.map((sub) => ({
+      _id: sub._id,
+      code: sub.code,
+      subject: sub.subject,
+      department: sub.department,
+      type: sub.type, // ✅ Added
+      createdAt: sub.createdAt,
+    }));
+
+    return res.status(200).json({
+      total: formattedSubjects.length,
+      subjects: formattedSubjects,
     });
+
   } catch (error) {
     console.error("Get All Subjects Error:", error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 
 
@@ -222,27 +292,55 @@ export const deleteSubject = async (req, res) => {
 // ✅ New function (for POST)
 export const addSubject = async (req, res) => {
   try {
-    const { code, subject, department } = req.body;
+    const { code, subject, department, type } = req.body;
 
-    if (!code || !subject || !department) {
-      return res.status(400).json({ message: "All fields are required" });
+    // ===============================
+    // VALIDATION
+    // ===============================
+    if (!code || !subject || !department || !type) {
+      return res.status(400).json({
+        message: "All fields are required",
+      });
     }
 
-    const existing = await Subject.findOne({ code, department });
+    const allowedTypes = ["Theory", "Lab", "Theory & Lab"];
+
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({
+        message: "Invalid subject type",
+      });
+    }
+
+    const existing = await Subject.findOne({
+      code: code.trim(),
+      department: department.trim(),
+    });
+
     if (existing) {
-      return res.status(400).json({ message: "Subject already exists" });
+      return res.status(400).json({
+        message: "Subject already exists",
+      });
     }
 
-    const newSubject = new Subject({ code, subject, department });
+    const newSubject = new Subject({
+      code: code.trim(),
+      subject: subject.trim(),
+      department: department.trim(),
+      type,
+    });
+
     await newSubject.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Subject added successfully",
       subject: newSubject,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
+
 
 
