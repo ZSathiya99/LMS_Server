@@ -305,10 +305,11 @@ export const getHodDashboardData = async (req, res) => {
           });
 
           return {
-            id: sub._id,               // allocation subject id
-            subjectId: sub.subjectId,  // ✅ ORIGINAL SUBJECT ID ADDED
+            id: sub._id,
+            subjectId: sub.subjectId,
             code: sub.code,
             subject: sub.subject,
+            type: sub.subjectType || allocation.subjectType, // ✅ ADDED TYPE
             semesterType: allocation.semesterType,
             sections: mergedSections
           };
@@ -329,6 +330,7 @@ export const getHodDashboardData = async (req, res) => {
 
     res.json({
       semesterType: allocation?.semesterType || null,
+      subjectType: allocation?.subjectType || null, // ✅ ADDED HERE ALSO
       subjects,
       faculty: facultyList
     });
@@ -338,6 +340,7 @@ export const getHodDashboardData = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // ✔ POST → Assign staff
