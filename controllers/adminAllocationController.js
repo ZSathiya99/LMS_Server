@@ -268,78 +268,97 @@ export const getHodDashboardSubjects = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-// ⭐ ADD THIS FUNCTION
+
+
+
 export const getHodDashboardData = async (req, res) => {
   try {
     const { subjectType, semester, regulation, department, semesterType } =
       req.query;
 
-    const safe = (v) => (v ? v.toString().trim() : '');
+    const safe = (v) => (v ? v.toString().trim() : "");
 
+    // 🔥 Step 1: Find allocation WITHOUT subjectType filter
     const allocation = await AdminAllocation.findOne({
-      department: { $regex: safe(department), $options: 'i' },
-      subjectType: { $regex: safe(subjectType), $options: 'i' },
+      department: safe(department),
       semester: Number(semester),
-      semesterType: { $regex: safe(semesterType), $options: 'i' },
-      regulation: { $regex: safe(regulation?.toString()), $options: 'i' }
+      regulation: safe(regulation),
+      semesterType: safe(semesterType),
     });
 
+    if (!allocation) {
+      return res.json({
+        semesterType: null,
+        subjectType: safe(subjectType),
+        subjects: [],
+        faculty: [],
+      });
+    }
+
+    // 🔥 Default sections
     const defaultSections = [
-      { sectionName: 'Section A' },
-      { sectionName: 'Section B' },
-      { sectionName: 'Section C' }
+      { sectionName: "Section A" },
+      { sectionName: "Section B" },
+      { sectionName: "Section C" },
     ];
 
-    const subjects = allocation
-      ? allocation.subjects.map((sub) => {
-          const mergedSections = defaultSections.map((def) => {
-            const existing = sub.sections.find(
-              (s) => s.sectionName === def.sectionName
-            );
-
-            return {
-              sectionName: def.sectionName,
-              sectionId: existing?._id || null,
-              staff: existing?.staff || null
-            };
-          });
+    // 🔥 Step 2: Filter subjects by subjectType (Lab / Theory)
+    const subjects = allocation.subjects
+      .filter(
+        (sub) =>
+          sub.subjectType &&
+          sub.subjectType.toLowerCase() === safe(subjectType).toLowerCase()
+      )
+      .map((sub) => {
+        const mergedSections = defaultSections.map((def) => {
+          const existing = sub.sections.find(
+            (s) => s.sectionName === def.sectionName
+          );
 
           return {
-            id: sub._id,
-            subjectId: sub.subjectId,
-            code: sub.code,
-            subject: sub.subject,
-            type: sub.subjectType || allocation.subjectType, // ✅ ADDED TYPE
-            semesterType: allocation.semesterType,
-            sections: mergedSections
+            sectionName: def.sectionName,
+            sectionId: existing?._id || null,
+            staff: existing?.staff || null,
           };
-        })
-      : [];
+        });
 
+        return {
+          id: sub._id,
+          subjectId: sub.subjectId,
+          code: sub.code,
+          subject: sub.subject,
+          type: sub.subjectType, // ✅ Lab / Theory
+          semesterType: allocation.semesterType,
+          sections: mergedSections,
+        };
+      });
+
+    // 🔥 Step 3: Get faculty list
     const facultyRaw = await Faculty.find({
-      department: { $regex: safe(department), $options: 'i' }
-    }).select('firstName lastName email designation role');
+      department: safe(department),
+    }).select("firstName lastName email designation role");
 
     const facultyList = facultyRaw.map((f) => ({
       id: f._id,
       name: `${f.firstName} ${f.lastName}`,
       email: f.email,
       designation: f.designation,
-      role: f.role
+      role: f.role,
     }));
 
+    // ✅ Final Response
     res.json({
-      semesterType: allocation?.semesterType || null,
-      subjectType: allocation?.subjectType || null, // ✅ ADDED HERE ALSO
+      semesterType: allocation.semesterType,
+      subjectType: safe(subjectType),
       subjects,
-      faculty: facultyList
+      faculty: facultyList,
     });
-
   } catch (error) {
-    console.error('Dashboard Error:', error);
+    console.error("Dashboard Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
