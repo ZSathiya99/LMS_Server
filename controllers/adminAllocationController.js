@@ -274,70 +274,80 @@ export const getHodDashboardData = async (req, res) => {
     const { subjectType, semester, regulation, department, semesterType } =
       req.query;
 
-    const safe = (v) => (v ? v.toString().trim() : '');
+    const safe = (v) => (v ? v.toString().trim() : "");
 
+    // 🔥 STRICT MATCH (No partial match)
     const allocation = await AdminAllocation.findOne({
-      department: { $regex: safe(department), $options: 'i' },
-      subjectType: { $regex: safe(subjectType), $options: 'i' },
+      department: { $regex: `^${safe(department)}$`, $options: "i" },
+      subjectType: { $regex: `^${safe(subjectType)}$`, $options: "i" }, // 🔥 important
       semester: Number(semester),
-      semesterType: { $regex: safe(semesterType), $options: 'i' },
-      regulation: { $regex: safe(regulation?.toString()), $options: 'i' }
+      semesterType: { $regex: `^${safe(semesterType)}$`, $options: "i" },
+      regulation: { $regex: `^${safe(regulation)}$`, $options: "i" },
     });
 
+    if (!allocation) {
+      return res.json({
+        semesterType: null,
+        subjectType: safe(subjectType),
+        subjects: [],
+        faculty: [],
+      });
+    }
+
     const defaultSections = [
-      { sectionName: 'Section A' },
-      { sectionName: 'Section B' },
-      { sectionName: 'Section C' }
+      { sectionName: "Section A" },
+      { sectionName: "Section B" },
+      { sectionName: "Section C" },
     ];
 
-    const subjects = allocation
-      ? allocation.subjects.map((sub) => {
-          const mergedSections = defaultSections.map((def) => {
-            const existing = sub.sections.find(
-              (s) => s.sectionName === def.sectionName
-            );
+    const subjects = allocation.subjects.map((sub) => {
+      const mergedSections = defaultSections.map((def) => {
+        const existing = sub.sections.find(
+          (s) => s.sectionName === def.sectionName
+        );
 
-            return {
-              sectionName: def.sectionName,
-              sectionId: existing?._id || null,
-              staff: existing?.staff || null
-            };
-          });
+        return {
+          sectionName: def.sectionName,
+          sectionId: existing?._id || null,
+          staff: existing?.staff || null,
+        };
+      });
 
-          return {
-            id: sub._id,               // allocation subject id
-            subjectId: sub.subjectId,  // ✅ ORIGINAL SUBJECT ID ADDED
-            code: sub.code,
-            subject: sub.subject,
-            semesterType: allocation.semesterType,
-            sections: mergedSections
-          };
-        })
-      : [];
+      return {
+        id: sub._id,
+        subjectId: sub.subjectId,
+        code: sub.code,
+        subject: sub.subject,
+        type: allocation.subjectType, // 🔥 show type in response
+        semesterType: allocation.semesterType,
+        sections: mergedSections,
+      };
+    });
 
     const facultyRaw = await Faculty.find({
-      department: { $regex: safe(department), $options: 'i' }
-    }).select('firstName lastName email designation role');
+      department: { $regex: `^${safe(department)}$`, $options: "i" },
+    }).select("firstName lastName email designation role");
 
     const facultyList = facultyRaw.map((f) => ({
       id: f._id,
       name: `${f.firstName} ${f.lastName}`,
       email: f.email,
       designation: f.designation,
-      role: f.role
+      role: f.role,
     }));
 
     res.json({
-      semesterType: allocation?.semesterType || null,
+      semesterType: allocation.semesterType,
+      subjectType: allocation.subjectType, // 🔥 important
       subjects,
-      faculty: facultyList
+      faculty: facultyList,
     });
-
   } catch (error) {
-    console.error('Dashboard Error:', error);
+    console.error("Dashboard Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
