@@ -23,6 +23,7 @@ import questionRoutes from './routes/questionRoutes.js';
 import materialRoutes from './routes/materialRoutes.js';
 import peopleRoutes from './routes/peopleRoutes.js';
 import studentClassroomRoutes from './routes/studentClassroomRoutes.js';
+import calendarRoutes from './routes/calendarRoutes.js';
 
 // Connect DB
 connectDB();
@@ -61,6 +62,7 @@ app.use('/api', assignmentRoutes);
 app.use('/api', questionRoutes);
 app.use('/uploads', express.static('uploads'));
 app.use('/api', materialRoutes);
+app.use('/api/calendar', calendarRoutes);
 
 // HOME
 app.get('/', (req, res) => {
