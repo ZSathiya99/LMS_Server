@@ -269,8 +269,6 @@ export const getHodDashboardSubjects = async (req, res) => {
   }
 };
 
-
-
 export const getHodDashboardData = async (req, res) => {
   try {
     const { subjectType, semester, regulation, department, semesterType } =
@@ -278,12 +276,16 @@ export const getHodDashboardData = async (req, res) => {
 
     const safe = (v) => (v ? v.toString().trim() : "");
 
-    // 🔥 Step 1: Find allocation WITHOUT subjectType filter
+    // 🔥 Find allocation WITH subjectType filter (correct for your schema)
     const allocation = await AdminAllocation.findOne({
       department: safe(department),
       semester: Number(semester),
-      regulation: safe(regulation),
       semesterType: safe(semesterType),
+      regulation: safe(regulation),
+      subjectType: {
+        $regex: `^${safe(subjectType)}$`,
+        $options: "i",
+      },
     });
 
     if (!allocation) {
@@ -295,45 +297,38 @@ export const getHodDashboardData = async (req, res) => {
       });
     }
 
-    // 🔥 Default sections
     const defaultSections = [
       { sectionName: "Section A" },
       { sectionName: "Section B" },
       { sectionName: "Section C" },
     ];
 
-    // 🔥 Step 2: Filter subjects by subjectType (Lab / Theory)
-    const subjects = allocation.subjects
-      .filter(
-        (sub) =>
-          sub.subjectType &&
-          sub.subjectType.toLowerCase() === safe(subjectType).toLowerCase()
-      )
-      .map((sub) => {
-        const mergedSections = defaultSections.map((def) => {
-          const existing = sub.sections.find(
-            (s) => s.sectionName === def.sectionName
-          );
-
-          return {
-            sectionName: def.sectionName,
-            sectionId: existing?._id || null,
-            staff: existing?.staff || null,
-          };
-        });
+    const subjects = allocation.subjects.map((sub) => {
+      const mergedSections = defaultSections.map((def) => {
+        const existing = sub.sections.find(
+          (s) => s.sectionName === def.sectionName
+        );
 
         return {
-          id: sub._id,
-          subjectId: sub.subjectId,
-          code: sub.code,
-          subject: sub.subject,
-          type: sub.subjectType, // ✅ Lab / Theory
-          semesterType: allocation.semesterType,
-          sections: mergedSections,
+          sectionName: def.sectionName,
+          sectionId: existing?._id || null,
+          classroomCode: existing?.classroomCode || null,
+          staff: existing?.staff || null,
         };
       });
 
-    // 🔥 Step 3: Get faculty list
+      return {
+        id: sub._id,
+        subjectId: sub.subjectId,
+        code: sub.code,
+        subject: sub.subject,
+        type: allocation.subjectType, // ✅ Lab / Theory
+        semesterType: allocation.semesterType,
+        sections: mergedSections,
+      };
+    });
+
+    // 🔥 Faculty List
     const facultyRaw = await Faculty.find({
       department: safe(department),
     }).select("firstName lastName email designation role");
@@ -346,10 +341,9 @@ export const getHodDashboardData = async (req, res) => {
       role: f.role,
     }));
 
-    // ✅ Final Response
     res.json({
       semesterType: allocation.semesterType,
-      subjectType: safe(subjectType),
+      subjectType: allocation.subjectType,
       subjects,
       faculty: facultyList,
     });
@@ -358,6 +352,7 @@ export const getHodDashboardData = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
