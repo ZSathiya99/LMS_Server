@@ -1,6 +1,6 @@
-import express from "express";
-import { verifyToken } from "../middleware/authMiddleware.js";
-import { uploadDocuments } from "../middleware/upload.js";
+import express from 'express';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import { uploadDocuments } from '../middleware/upload.js';
 
 import {
   createAssignment,
@@ -10,9 +10,9 @@ import {
   deleteAssignment,
   addAssignmentComment,
   submitAssignment,
-  gradeSubmission,
+  gradeSubmission
   // getAssignmentDetails,
-} from "../controllers/assignmentController.js";
+} from '../controllers/assignmentController.js';
 
 const router = express.Router();
 
@@ -22,46 +22,34 @@ const router = express.Router();
 
 // Create assignment
 router.post(
-  "/assignment",
+  '/assignment',
   verifyToken,
-  uploadDocuments.array("attachments", 5),
+  uploadDocuments.array('attachments', 5),
   createAssignment
 );
 
 // Get all assignments by subject
 router.get(
-  "/assignment/subject/:subjectId",
+  '/assignment/subject/:subjectId/:sectionId',
   verifyToken,
   getAssignmentsBySubject
 );
 
 // Get single assignment
-router.get(
-  "/assignment/:assignmentId",
-  verifyToken,
-  getSingleAssignment
-);
+router.get('/assignment/:assignmentId', verifyToken, getSingleAssignment);
 
 // Update assignment
-router.put(
-  "/assignment/:assignmentId",
-  verifyToken,
-  updateAssignment
-);
+router.put('/assignment/:assignmentId', verifyToken, updateAssignment);
 
 // Delete assignment
-router.delete(
-  "/assignment/:assignmentId",
-  verifyToken,
-  deleteAssignment
-);
+router.delete('/assignment/:assignmentId', verifyToken, deleteAssignment);
 
 /* =====================================================
    ASSIGNMENT COMMENTS (STAFF / STUDENT)
 ===================================================== */
 
 router.post(
-  "/assignment/:assignmentId/comment",
+  '/assignment/:assignmentId/comment',
   verifyToken,
   addAssignmentComment
 );
@@ -71,9 +59,9 @@ router.post(
 ===================================================== */
 
 router.post(
-  "/assignment/:assignmentId/submit",
+  '/assignment/:assignmentId/submit',
   verifyToken,
-  uploadDocuments.single("attachment"),
+  uploadDocuments.single('attachment'),
   submitAssignment
 );
 
@@ -82,7 +70,7 @@ router.post(
 ===================================================== */
 
 router.put(
-  "/assignment/submission/:submissionId/grade",
+  '/assignment/submission/:submissionId/grade',
   verifyToken,
   gradeSubmission
 );

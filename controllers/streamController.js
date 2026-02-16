@@ -1,50 +1,52 @@
-import Stream from "../models/Stream.js";
-import mongoose from "mongoose";
-import AdminAllocation from "../models/adminAllocationModel.js";
-import fs from "fs";
-import path from "path";
+import Stream from '../models/Stream.js';
+import mongoose from 'mongoose';
+import AdminAllocation from '../models/adminAllocationModel.js';
+import fs from 'fs';
+import path from 'path';
 
 /* =========================================
    🔥 CREATE STREAM POST
 ========================================= */
 export const createStreamPost = async (req, res) => {
   try {
-    const { subjectId, message, link, youtubeLink } = req.body;
+    const { subjectId, sectionId, message, link, youtubeLink } = req.body;
     const staffId = req.user.facultyId;
 
-    if (!subjectId || !message) {
+    if (!subjectId || !sectionId || !message) {
       return res.status(400).json({
-        message: "Subject ID and message are required",
+        message: 'subjectId, sectionId and message are required'
       });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
-      return res.status(400).json({ message: "Invalid Subject ID" });
+    if (
+      !mongoose.Types.ObjectId.isValid(subjectId) ||
+      !mongoose.Types.ObjectId.isValid(sectionId)
+    ) {
+      return res.status(400).json({ message: 'Invalid ID provided' });
     }
-    
 
-    // Convert files to full URL
     const uploadedFiles =
       req.files?.map(
         (file) =>
-          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+          `${req.protocol}://${req.get('host')}/uploads/${file.filename}`
       ) || [];
 
     const newPost = await Stream.create({
       subjectId,
+      sectionId, // 🔥 added
       staffId,
       message,
       attachments: uploadedFiles,
-      link: link || "",
-      youtubeLink: youtubeLink || "",
+      link: link || '',
+      youtubeLink: youtubeLink || ''
     });
 
     return res.status(201).json({
-      message: "Announcement created successfully",
-      data: newPost,
+      message: 'Announcement created successfully',
+      data: newPost
     });
   } catch (error) {
-    console.error("Create Stream Error:", error);
+    console.error('Create Stream Error:', error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -54,23 +56,26 @@ export const createStreamPost = async (req, res) => {
 ========================================= */
 
 const getAcademicYear = (semester) => {
-  if (semester <= 2) return "1st Year";
-  if (semester <= 4) return "2nd Year";
-  if (semester <= 6) return "3rd Year";
-  if (semester <= 8) return "4th Year";
-  return "Unknown";
+  if (semester <= 2) return '1st Year';
+  if (semester <= 4) return '2nd Year';
+  if (semester <= 6) return '3rd Year';
+  if (semester <= 8) return '4th Year';
+  return 'Unknown';
 };
 
 export const getStreamBySubject = async (req, res) => {
   try {
-    const { subjectId } = req.params;
+    const { subjectId, sectionId } = req.params;
     const staffId = req.user.facultyId;
 
-    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
-      return res.status(400).json({ message: "Invalid Subject ID" });
+    if (
+      !mongoose.Types.ObjectId.isValid(subjectId) ||
+      !mongoose.Types.ObjectId.isValid(sectionId)
+    ) {
+      return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    // 🔥 Find allocation using projection (faster)
+    /* 🔥 Find allocation with correct section */
     const allocation = await AdminAllocation.findOne(
       {
         subjects: {
@@ -78,48 +83,47 @@ export const getStreamBySubject = async (req, res) => {
             _id: subjectId,
             sections: {
               $elemMatch: {
-                "staff.id": String(staffId),
-              },
-            },
-          },
-        },
+                _id: sectionId,
+                'staff.id': String(staffId)
+              }
+            }
+          }
+        }
       },
       {
         department: 1,
         regulation: 1,
         semester: 1,
         semesterType: 1,
-        subjects: 1,
+        subjects: 1
       }
     );
 
     if (!allocation) {
-      return res.status(404).json({ message: "Subject not found" });
+      return res.status(404).json({
+        message: 'Subject or section not found'
+      });
     }
 
-    // 🔥 Find subject + section directly
     const subject = allocation.subjects.find(
       (sub) => String(sub._id) === String(subjectId)
     );
 
-    if (!subject) {
-      return res.status(404).json({
-        message: "Subject details not found",
-      });
-    }
-
     const section = subject.sections.find(
-      (sec) => String(sec.staff?.id) === String(staffId)
+      (sec) =>
+        String(sec._id) === String(sectionId) &&
+        String(sec.staff?.id) === String(staffId)
     );
 
     if (!section) {
       return res.status(404).json({
-        message: "Section not found for this staff",
+        message: 'Section not found for this staff'
       });
     }
 
     const subjectData = {
       subjectId: subject._id,
+      sectionId: section._id,
       department: allocation.department,
       regulation: allocation.regulation,
       semester: allocation.semester,
@@ -127,18 +131,18 @@ export const getStreamBySubject = async (req, res) => {
       subjectCode: subject.code,
       subjectName: subject.subject,
       sectionName: section.sectionName,
-      classroomCode: section.classroomCode,
+      classroomCode: section.classroomCode
     };
 
-    // 🔥 Get Stream Posts + sort comments inside each stream
+    /* 🔥 Fetch Stream Posts properly isolated */
     const streamPosts = await Stream.find({
       subjectId,
-      staffId,
+      sectionId,
+      staffId
     })
       .sort({ createdAt: -1 })
-      .lean(); // faster response
+      .lean();
 
-    // 🔥 Sort comments inside each stream (newest first)
     streamPosts.forEach((post) => {
       if (post.comments?.length > 0) {
         post.comments.sort(
@@ -150,20 +154,13 @@ export const getStreamBySubject = async (req, res) => {
     return res.status(200).json({
       ...subjectData,
       totalPosts: streamPosts.length,
-      stream: streamPosts,
+      stream: streamPosts
     });
-
   } catch (error) {
-    console.error("Get Stream Error:", error);
+    console.error('Get Stream Error:', error);
     return res.status(500).json({ message: error.message });
   }
 };
-
-
-
-
-
-
 
 /* =========================================
    🔥 UPDATE STREAM POST
@@ -175,17 +172,17 @@ export const updateStreamPost = async (req, res) => {
     const staffId = req.user.facultyId;
 
     if (!mongoose.Types.ObjectId.isValid(streamId)) {
-      return res.status(400).json({ message: "Invalid Stream ID" });
+      return res.status(400).json({ message: 'Invalid Stream ID' });
     }
 
     const post = await Stream.findOne({
       _id: streamId,
-      staffId,
+      staffId
     });
 
     if (!post) {
       return res.status(404).json({
-        message: "Post not found or unauthorized",
+        message: 'Post not found or unauthorized'
       });
     }
 
@@ -193,11 +190,10 @@ export const updateStreamPost = async (req, res) => {
     if (link !== undefined) post.link = link;
     if (youtubeLink !== undefined) post.youtubeLink = youtubeLink;
 
-    // Add new uploaded files
     if (req.files && req.files.length > 0) {
       const newFiles = req.files.map(
         (file) =>
-          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+          `${req.protocol}://${req.get('host')}/uploads/${file.filename}`
       );
 
       post.attachments = [...post.attachments, ...newFiles];
@@ -206,11 +202,11 @@ export const updateStreamPost = async (req, res) => {
     await post.save();
 
     return res.status(200).json({
-      message: "Post updated successfully",
-      data: post,
+      message: 'Post updated successfully',
+      data: post
     });
   } catch (error) {
-    console.error("Update Stream Error:", error);
+    console.error('Update Stream Error:', error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -224,25 +220,25 @@ export const deleteStreamPost = async (req, res) => {
     const staffId = req.user.facultyId;
 
     if (!mongoose.Types.ObjectId.isValid(streamId)) {
-      return res.status(400).json({ message: "Invalid Stream ID" });
+      return res.status(400).json({ message: 'Invalid Stream ID' });
     }
 
     const deletedPost = await Stream.findOneAndDelete({
       _id: streamId,
-      staffId,
+      staffId
     });
 
     if (!deletedPost) {
       return res.status(404).json({
-        message: "Post not found or unauthorized",
+        message: 'Post not found or unauthorized'
       });
     }
 
     // Delete uploaded files from server
     if (deletedPost.attachments?.length > 0) {
       deletedPost.attachments.forEach((fileUrl) => {
-        const filename = fileUrl.split("/uploads/")[1];
-        const filePath = path.join("uploads", filename);
+        const filename = fileUrl.split('/uploads/')[1];
+        const filePath = path.join('uploads', filename);
 
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
@@ -251,13 +247,14 @@ export const deleteStreamPost = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: "Post deleted successfully",
+      message: 'Post deleted successfully'
     });
   } catch (error) {
-    console.error("Delete Stream Error:", error);
+    console.error('Delete Stream Error:', error);
     return res.status(500).json({ message: error.message });
   }
 };
+
 export const addCommentToStream = async (req, res) => {
   try {
     const { streamId } = req.params;
@@ -265,33 +262,32 @@ export const addCommentToStream = async (req, res) => {
 
     let role = req.user.role;
 
-    if (role === "faculty") {
-      role = "staff";
+    if (role === 'faculty') {
+      role = 'staff';
     }
 
     const stream = await Stream.findById(streamId);
 
     if (!stream) {
-      return res.status(404).json({ message: "Stream not found" });
+      return res.status(404).json({ message: 'Stream not found' });
     }
 
     stream.comments.push({
       userId: req.user.id,
       role,
       name: req.user.name,
-      profileImg: req.user.profileImg || "",
-      comment,
+      profileImg: req.user.profileImg || '',
+      comment
     });
 
     await stream.save();
 
     return res.status(200).json({
-      message: "Comment added successfully",
-      data: stream.comments,
+      message: 'Comment added successfully',
+      data: stream.comments
     });
-
   } catch (error) {
-    console.error("Add Comment Error:", error);
+    console.error('Add Comment Error:', error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -302,27 +298,29 @@ export const deleteCommentFromStream = async (req, res) => {
     const userId = req.user.id;
     const role = req.user.role;
 
-    if (!mongoose.Types.ObjectId.isValid(streamId) ||
-        !mongoose.Types.ObjectId.isValid(commentId)) {
-      return res.status(400).json({ message: "Invalid ID" });
+    if (
+      !mongoose.Types.ObjectId.isValid(streamId) ||
+      !mongoose.Types.ObjectId.isValid(commentId)
+    ) {
+      return res.status(400).json({ message: 'Invalid ID' });
     }
 
     const stream = await Stream.findById(streamId);
 
     if (!stream) {
-      return res.status(404).json({ message: "Stream not found" });
+      return res.status(404).json({ message: 'Stream not found' });
     }
 
     const comment = stream.comments.id(commentId);
 
     if (!comment) {
-      return res.status(404).json({ message: "Comment not found" });
+      return res.status(404).json({ message: 'Comment not found' });
     }
 
     // 🔥 Permission check
-    if (role === "student" && String(comment.userId) !== String(userId)) {
+    if (role === 'student' && String(comment.userId) !== String(userId)) {
       return res.status(403).json({
-        message: "You can only delete your own comment",
+        message: 'You can only delete your own comment'
       });
     }
 
@@ -332,11 +330,10 @@ export const deleteCommentFromStream = async (req, res) => {
     await stream.save();
 
     return res.status(200).json({
-      message: "Comment deleted successfully",
+      message: 'Comment deleted successfully'
     });
-
   } catch (error) {
-    console.error("Delete Comment Error:", error);
+    console.error('Delete Comment Error:', error);
     return res.status(500).json({ message: error.message });
   }
 };

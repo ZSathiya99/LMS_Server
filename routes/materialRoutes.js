@@ -1,6 +1,6 @@
-import express from "express";
-import { verifyToken } from "../middleware/authMiddleware.js";
-import { uploadDocuments } from "../middleware/upload.js";
+import express from 'express';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import { uploadDocuments } from '../middleware/upload.js';
 
 import {
   createMaterial,
@@ -10,8 +10,8 @@ import {
   deleteMaterial,
   addMaterialComment,
   editMaterialComment,
-  deleteMaterialComment,
-} from "../controllers/materialController.js";
+  deleteMaterialComment
+} from '../controllers/materialController.js';
 
 const router = express.Router();
 
@@ -21,61 +21,45 @@ const router = express.Router();
 
 /* CREATE MATERIAL */
 router.post(
-  "/material",
+  '/material',
   verifyToken,
-  uploadDocuments.array("attachments", 5),
+  uploadDocuments.array('attachments', 5),
   createMaterial
 );
 
 /* GET ALL MATERIALS BY SUBJECT */
 router.get(
-  "/material/subject/:subjectId",
+  '/material/subject/:subjectId/:sectionId',
   verifyToken,
   getMaterialsBySubject
 );
 
 /* GET SINGLE MATERIAL */
-router.get(
-  "/material/:materialId",
-  verifyToken,
-  getSingleMaterial
-);
+router.get('/material/:materialId', verifyToken, getSingleMaterial);
 
 /* UPDATE MATERIAL */
-router.put(
-  "/material/:materialId",
-  verifyToken,
-  updateMaterial
-);
+router.put('/material/:materialId', verifyToken, updateMaterial);
 
 /* DELETE MATERIAL */
-router.delete(
-  "/material/:materialId",
-  verifyToken,
-  deleteMaterial
-);
+router.delete('/material/:materialId', verifyToken, deleteMaterial);
 
 /* =====================================================
    COMMENTS
 ===================================================== */
 
 /* ADD COMMENT */
-router.post(
-  "/material/:materialId/comment",
-  verifyToken,
-  addMaterialComment
-);
+router.post('/material/:materialId/comment', verifyToken, addMaterialComment);
 
 /* EDIT COMMENT */
 router.put(
-  "/material/:materialId/comment/:commentId",
+  '/material/:materialId/comment/:commentId',
   verifyToken,
   editMaterialComment
 );
 
 /* DELETE COMMENT */
 router.delete(
-  "/material/:materialId/comment/:commentId",
+  '/material/:materialId/comment/:commentId',
   verifyToken,
   deleteMaterialComment
 );
