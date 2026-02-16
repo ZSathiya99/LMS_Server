@@ -107,7 +107,7 @@ export const createQuestion = async (req, res) => {
 
 export const getQuestionsData = async (req, res) => {
   try {
-    const { subjectId, sectionId } = req.query;
+    const { subjectId, sectionId } = req.params;
     const staffId = req.user.facultyId;
 
     if (!subjectId || !sectionId) {

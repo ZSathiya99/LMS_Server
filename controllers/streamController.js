@@ -75,12 +75,12 @@ export const getStreamBySubject = async (req, res) => {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    /* 🔥 Find allocation with correct section */
+    /* 🔥 Corrected allocation search */
     const allocation = await AdminAllocation.findOne(
       {
         subjects: {
           $elemMatch: {
-            _id: subjectId,
+            subjectId: subjectId, // ✅ FIXED HERE
             sections: {
               $elemMatch: {
                 _id: sectionId,
@@ -105,9 +105,16 @@ export const getStreamBySubject = async (req, res) => {
       });
     }
 
+    /* 🔥 Find correct subject using subjectId */
     const subject = allocation.subjects.find(
-      (sub) => String(sub._id) === String(subjectId)
+      (sub) => String(sub.subjectId) === String(subjectId)
     );
+
+    if (!subject) {
+      return res.status(404).json({
+        message: 'Subject details not found'
+      });
+    }
 
     const section = subject.sections.find(
       (sec) =>
@@ -122,7 +129,7 @@ export const getStreamBySubject = async (req, res) => {
     }
 
     const subjectData = {
-      subjectId: subject._id,
+      subjectId: subject.subjectId, // ✅ now correct reference
       sectionId: section._id,
       department: allocation.department,
       regulation: allocation.regulation,
@@ -134,7 +141,7 @@ export const getStreamBySubject = async (req, res) => {
       classroomCode: section.classroomCode
     };
 
-    /* 🔥 Fetch Stream Posts properly isolated */
+    /* 🔥 Fetch Stream Posts */
     const streamPosts = await Stream.find({
       subjectId,
       sectionId,
@@ -190,7 +197,7 @@ export const updateStreamPost = async (req, res) => {
     if (link !== undefined) post.link = link;
     if (youtubeLink !== undefined) post.youtubeLink = youtubeLink;
 
-    if (req.files && req.files.length > 0) {
+    if (req.files?.length > 0) {
       const newFiles = req.files.map(
         (file) =>
           `${req.protocol}://${req.get('host')}/uploads/${file.filename}`
