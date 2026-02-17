@@ -1,15 +1,15 @@
-import express from "express";
-import { verifyToken } from "../middleware/authMiddleware.js";
+import express from 'express';
+import { verifyToken } from '../middleware/authMiddleware.js';
 
 import {
   createStreamPost,
   getStreamBySubject,
   deleteStreamPost,
-  updateStreamPost,addCommentToStream,deleteCommentFromStream,
-} from "../controllers/streamController.js";
-import { uploadDocuments } from "../middleware/upload.js"; // ✅ FIXED
-
-
+  updateStreamPost,
+  addCommentToStream,
+  deleteCommentFromStream
+} from '../controllers/streamController.js';
+import { uploadDocuments } from '../middleware/upload.js'; // ✅ FIXED
 
 const router = express.Router();
 
@@ -18,9 +18,9 @@ const router = express.Router();
  * POST /api/staff/stream
  */
 router.post(
-  "/stream",
+  '/stream',
   verifyToken,
-  uploadDocuments.array("attachments", 5), // max 5 files
+  uploadDocuments.array('attachments', 5), // max 5 files
   createStreamPost
 );
 
@@ -28,20 +28,16 @@ router.post(
  * 🔥 Get Stream By Subject
  * GET /api/staff/stream/:subjectId
  */
-router.get(
-  "/stream/:subjectId",
-  verifyToken,
-  getStreamBySubject
-);
+router.get('/stream/:subjectId/:sectionId', verifyToken, getStreamBySubject);
 
 /**
  * 🔥 Update Stream Post
  * PUT /api/staff/stream/:streamId
  */
 router.put(
-  "/stream/:streamId",
+  '/stream/:streamId',
   verifyToken,
-  uploadDocuments.array("attachments", 5), // 🔥 IMPORTANT
+  uploadDocuments.array('attachments', 5), // 🔥 IMPORTANT
   updateStreamPost
 );
 
@@ -49,22 +45,13 @@ router.put(
  * 🔥 Delete Stream Post
  * DELETE /api/staff/stream/:streamId
  */
-router.delete(
-  "/stream/:streamId",
-  verifyToken,
-  deleteStreamPost
-);     
+router.delete('/stream/:streamId', verifyToken, deleteStreamPost);
 
-router.post(
-  "/stream/:streamId/comment",
-  verifyToken,
-  addCommentToStream
-);
+router.post('/stream/:streamId/comment', verifyToken, addCommentToStream);
 router.delete(
-  "/stream/:streamId/comment/:commentId",
+  '/stream/:streamId/comment/:commentId',
   verifyToken,
   deleteCommentFromStream
 );
-
 
 export default router;

@@ -1,18 +1,19 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const subjectSchema = new mongoose.Schema({
   code: { type: String, required: true },
   subject: { type: String, required: true },
   department: { type: String, required: true },
-   type: {
-      type: String,
-      required: true,
-      enum: ["Theory", "Lab", "Theory & Lab"],
-    },
-  faculty: {  // 👈 Add this line
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Faculty",
+  type: {
+    type: String,
+    required: true,
+    enum: ['Theory', 'Lab', 'Theory & Lab', 'Professional Elective']
   },
+  faculty: {
+    // 👈 Add this line
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Faculty'
+  }
 });
 
-export default mongoose.model("Subject", subjectSchema);
+export default mongoose.model('Subject', subjectSchema);

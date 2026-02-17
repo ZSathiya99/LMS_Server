@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 /* ================================
    COMMENT SUB-SCHEMA
@@ -7,19 +7,19 @@ const commentSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
+      required: true
     },
 
     userType: {
       type: String,
-      enum: ["staff", "student"],
-      required: true,
+      enum: ['staff', 'student'],
+      required: true
     },
 
     comment: {
       type: String,
-      required: true,
-    },
+      required: true
+    }
   },
   { timestamps: true }
 );
@@ -32,8 +32,8 @@ const submissionSchema = new mongoose.Schema(
   {
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Student",
-      required: true,
+      ref: 'Student',
+      required: true
     },
 
     // For MCQ answers
@@ -43,13 +43,13 @@ const submissionSchema = new mongoose.Schema(
 
     marksObtained: {
       type: Number,
-      default: null,
+      default: null
     },
 
     submittedAt: {
       type: Date,
-      default: Date.now,
-    },
+      default: Date.now
+    }
   },
   { timestamps: true }
 );
@@ -61,25 +61,31 @@ const questionSchema = new mongoose.Schema(
   {
     subjectId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Subject",
-      required: true,
+      ref: 'Subject',
+      required: true
     },
 
     staffId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Faculty",
+      ref: 'Faculty',
+      required: true
+    },
+
+    sectionId: {
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
+      index: true
     },
 
     title: {
       type: String,
-      required: true,
+      required: true
     },
 
     questionType: {
       type: String,
-      enum: ["Single Choice", "Multiple Choice"],
-      required: true,
+      enum: ['Single Choice', 'Multiple Choice'],
+      required: true
     },
 
     instruction: String,
@@ -88,7 +94,7 @@ const questionSchema = new mongoose.Schema(
 
     marks: {
       type: Number,
-      required: true,
+      required: true
     },
 
     /* =====================
@@ -97,9 +103,9 @@ const questionSchema = new mongoose.Schema(
     options: [
       {
         text: {
-          type: String,
-        },
-      },
+          type: String
+        }
+      }
     ],
 
     link: String,
@@ -107,15 +113,15 @@ const questionSchema = new mongoose.Schema(
 
     dueDate: {
       type: Date,
-      required: true,
+      required: true
     },
 
     /* 🔥 EMBEDDED DATA */
     comments: [commentSchema],
 
-    submissions: [submissionSchema],
+    submissions: [submissionSchema]
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Question", questionSchema);
+export default mongoose.model('Question', questionSchema);

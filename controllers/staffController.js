@@ -57,7 +57,7 @@ export const getStaffSubjectPlanning = async (req, res) => {
             }
 
             result.push({
-              subjectId: subject._id,
+              subjectId: subject.subjectId,
               sectionId: section._id,
               department: allocation.department,
               regulation: allocation.regulation,

@@ -1,8 +1,8 @@
-import mongoose from "mongoose";
-import fs from "fs";
-import path from "path";
-import Question from "../models/Question.js";
-import ClassroomMembers from "../models/ClassroomMembers.js";
+import mongoose from 'mongoose';
+import fs from 'fs';
+import path from 'path';
+import Question from '../models/Question.js';
+import ClassroomMembers from '../models/ClassroomMembers.js';
 
 /* ======================================================
    CREATE QUESTION
@@ -13,6 +13,7 @@ export const createQuestion = async (req, res) => {
 
     const {
       subjectId,
+      sectionId, // 🔥 added
       title,
       questionType,
       instruction,
@@ -20,46 +21,61 @@ export const createQuestion = async (req, res) => {
       link,
       youtubeLink,
       options,
-      marks,
+      marks
     } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(subjectId))
-      return res.status(400).json({ message: "Invalid subjectId" });
-
-    if (!subjectId || !title || !questionType || !marks || !dueDate)
+    if (
+      !subjectId ||
+      !sectionId ||
+      !title ||
+      !questionType ||
+      !marks ||
+      !dueDate
+    ) {
       return res.status(400).json({
         message:
-          "subjectId, title, questionType, marks and dueDate are required",
+          'subjectId, sectionId, title, questionType, marks and dueDate are required'
       });
+    }
 
-    if (Number(marks) <= 0)
+    if (
+      !mongoose.Types.ObjectId.isValid(subjectId) ||
+      !mongoose.Types.ObjectId.isValid(sectionId)
+    ) {
       return res.status(400).json({
-        message: "Marks must be greater than 0",
+        message: 'Invalid subjectId or sectionId'
       });
+    }
 
-    const attachments = req.files
-      ? req.files.map((file) => file.filename)
-      : [];
+    if (Number(marks) <= 0) {
+      return res.status(400).json({
+        message: 'Marks must be greater than 0'
+      });
+    }
+
+    const attachments = req.files ? req.files.map((file) => file.filename) : [];
 
     let formattedOptions = [];
 
     if (
-      questionType === "Single Choice" ||
-      questionType === "Multiple Choice"
+      questionType === 'Single Choice' ||
+      questionType === 'Multiple Choice'
     ) {
-      if (!options)
+      if (!options) {
         return res.status(400).json({
-          message: "Options required for MCQ",
+          message: 'Options required for MCQ'
         });
+      }
 
       const parsed =
-        typeof options === "string" ? JSON.parse(options) : options;
+        typeof options === 'string' ? JSON.parse(options) : options;
 
       formattedOptions = parsed.map((opt) => ({ text: opt }));
     }
 
     const question = await Question.create({
       subjectId,
+      sectionId, // 🔥 added
       staffId,
       title,
       questionType,
@@ -71,19 +87,17 @@ export const createQuestion = async (req, res) => {
       marks: Number(marks),
       dueDate,
       comments: [],
-      submissions: [],
+      submissions: []
     });
 
     res.status(201).json({
-      message: "Question created successfully",
-      data: question,
+      message: 'Question created successfully',
+      data: question
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 /* ======================================================
    GET QUESTIONS (OVERALL DETAILS LIKE ASSIGNMENT)
@@ -93,73 +107,70 @@ export const createQuestion = async (req, res) => {
 
 export const getQuestionsData = async (req, res) => {
   try {
-    const { subjectId } = req.query;
+    const { subjectId, sectionId } = req.params;
+    const staffId = req.user.facultyId;
 
-    if (!subjectId) {
+    if (!subjectId || !sectionId) {
       return res.status(400).json({
-        message: "subjectId is required",
+        message: 'subjectId and sectionId are required'
       });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(subjectId) ||
+      !mongoose.Types.ObjectId.isValid(sectionId)
+    ) {
       return res.status(400).json({
-        message: "Invalid subjectId",
+        message: 'Invalid subjectId or sectionId'
       });
     }
 
     /* 1️⃣ Get Classroom Students */
     const classroomStudents = await ClassroomMembers.find({
       subjectId,
+      sectionId // 🔥 added
     }).populate(
-      "studentId",
-      "firstName lastName registerNumber email profileImg"
+      'studentId',
+      'firstName lastName registerNumber email profileImg'
     );
 
     const totalStudents = classroomStudents.length;
 
     /* 2️⃣ Get Questions */
-    const questions = await Question.find({ subjectId }).sort({
-      createdAt: -1,
-    });
+    const questions = await Question.find({
+      subjectId,
+      sectionId, // 🔥 added
+      staffId // 🔥 prevent cross staff access
+    }).sort({ createdAt: -1 });
 
-    /* 3️⃣ Build Final Response */
+    /* 3️⃣ Format Response */
     const formattedQuestions = questions.map((question) => {
       const submittedIds = question.submissions.map((s) =>
         s.studentId.toString()
       );
 
-      /* Submitted Students */
       const submittedStudents = classroomStudents
-        .filter((stu) =>
-          submittedIds.includes(stu.studentId._id.toString())
-        )
+        .filter((stu) => submittedIds.includes(stu.studentId._id.toString()))
         .map((stu) => {
           const submission = question.submissions.find(
-            (s) =>
-              s.studentId.toString() ===
-              stu.studentId._id.toString()
+            (s) => s.studentId.toString() === stu.studentId._id.toString()
           );
 
           return {
             ...stu.studentId.toObject(),
-            submittedAt: submission?.submittedAt || null,
+            submittedAt: submission?.submittedAt || null
           };
         });
 
-      /* Pending Students */
       const pendingStudents = classroomStudents
-        .filter(
-          (stu) =>
-            !submittedIds.includes(
-              stu.studentId._id.toString()
-            )
-        )
+        .filter((stu) => !submittedIds.includes(stu.studentId._id.toString()))
         .map((stu) => stu.studentId);
 
       return {
         _id: question._id,
-        key: "Question",
+        key: 'Question',
         subjectId: question.subjectId,
+        sectionId: question.sectionId, // 🔥 added
         title: question.title,
         marks: question.marks,
         dueDate: question.dueDate,
@@ -168,45 +179,35 @@ export const getQuestionsData = async (req, res) => {
         attachments: question.attachments,
         options: question.options,
 
-        /* 🔥 FULL COMMENTS (NOT COUNT) */
         comments: {
           total: question.comments.length,
-          staff: question.comments.filter(
-            (c) => c.userType === "staff"
-          ),
-          students: question.comments.filter(
-            (c) => c.userType === "student"
-          ),
+          staff: question.comments.filter((c) => c.userType === 'staff'),
+          students: question.comments.filter((c) => c.userType === 'student')
         },
 
-        /* 🔥 STATS */
         stats: {
           totalStudents,
           submitted: submittedStudents.length,
-          pending: pendingStudents.length,
+          pending: pendingStudents.length
         },
 
-        /* 🔥 STUDENT LISTS */
         students: {
           all: classroomStudents.map((stu) => stu.studentId),
           submitted: submittedStudents,
-          pending: pendingStudents,
-        },
+          pending: pendingStudents
+        }
       };
     });
 
     return res.status(200).json({
       totalQuestions: formattedQuestions.length,
-      questions: formattedQuestions,
+      questions: formattedQuestions
     });
-
   } catch (error) {
-    console.error("Get Questions Error:", error);
+    console.error('Get Questions Error:', error);
     return res.status(500).json({ message: error.message });
   }
 };
-
-
 
 /* ======================================================
    ADD COMMENT
@@ -216,27 +217,27 @@ export const addQuestionComment = async (req, res) => {
     const { questionId } = req.params;
     const { comment } = req.body;
 
-    const question = await Question.findById(questionId);
+    const question = await Question.findOne({
+      _id: questionId,
+      staffId: req.user.role === 'faculty' ? req.user.facultyId : undefined
+    });
+
     if (!question)
-      return res.status(404).json({ message: "Question not found" });
+      return res.status(404).json({ message: 'Question not found' });
 
     question.comments.push({
       userId:
-        req.user.role === "faculty"
-          ? req.user.facultyId
-          : req.user.studentId,
-      userType:
-        req.user.role === "faculty" ? "staff" : "student",
-      comment,
+        req.user.role === 'faculty' ? req.user.facultyId : req.user.studentId,
+      userType: req.user.role === 'faculty' ? 'staff' : 'student',
+      comment
     });
 
     await question.save();
 
     res.json({
-      message: "Comment added successfully",
-      comments: question.comments,
+      message: 'Comment added successfully',
+      comments: question.comments
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -251,17 +252,15 @@ export const deleteQuestionComment = async (req, res) => {
 
     const question = await Question.findById(questionId);
     if (!question)
-      return res.status(404).json({ message: "Question not found" });
+      return res.status(404).json({ message: 'Question not found' });
 
     const comment = question.comments.id(commentId);
-    if (!comment)
-      return res.status(404).json({ message: "Comment not found" });
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
 
     comment.deleteOne();
     await question.save();
 
-    res.json({ message: "Comment deleted successfully" });
-
+    res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -277,24 +276,22 @@ export const submitQuestion = async (req, res) => {
 
     const question = await Question.findById(questionId);
     if (!question)
-      return res.status(404).json({ message: "Question not found" });
+      return res.status(404).json({ message: 'Question not found' });
 
     const already = question.submissions.find(
       (s) => s.studentId.toString() === studentId.toString()
     );
 
-    if (already)
-      return res.status(400).json({ message: "Already submitted" });
+    if (already) return res.status(400).json({ message: 'Already submitted' });
 
     question.submissions.push({
       studentId,
-      submittedAt: new Date(),
+      submittedAt: new Date()
     });
 
     await question.save();
 
-    res.json({ message: "Submitted successfully" });
-
+    res.json({ message: 'Submitted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
