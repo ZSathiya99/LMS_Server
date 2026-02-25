@@ -24,6 +24,7 @@ import materialRoutes from './routes/materialRoutes.js';
 import peopleRoutes from './routes/peopleRoutes.js';
 import studentClassroomRoutes from './routes/studentClassroomRoutes.js';
 import calendarRoutes from './routes/calendarRoutes.js';
+import coursePlanRoutes from './routes/coursePlanRoutes.js'
 
 // Connect DB
 connectDB();
@@ -63,6 +64,7 @@ app.use('/api', questionRoutes);
 app.use('/uploads', express.static('uploads'));
 app.use('/api', materialRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use("/api/course-plan", coursePlanRoutes);
 
 // HOME
 app.get('/', (req, res) => {
