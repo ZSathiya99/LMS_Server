@@ -1,8 +1,8 @@
 import express from "express";
-import { getCourseHTML } from "../controllers/generatePdfController";
+import { getCourseHTML } from "../controllers/generatePdfController.js";
 
 const router = express.Router();
 
-router.get("/course_plan/generatePdf", getCourseHTML);
+router.get("/", getCourseHTML);
 
-export default router
+export default router;

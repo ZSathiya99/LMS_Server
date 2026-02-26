@@ -27,6 +27,7 @@ import calendarRoutes from "./routes/calendarRoutes.js";
 import coursePlanRoutes from "./routes/coursePlanRoutes.js";
 import generatePdfRoutes from "./routes/generatePdfRoutes.js";
 
+
 // Connect DB
 connectDB();
 
@@ -67,6 +68,9 @@ app.use("/api", materialRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/course-plan", coursePlanRoutes);
 app.use("/api/course-plan/generatePdf", generatePdfRoutes);
+
+// access assets folder when downloading the pdf
+app.use("/pdf_assets", express.static(path.join(process.cwd(), "pdf_assets")));
 
 // HOME
 app.get("/", (req, res) => {

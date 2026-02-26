@@ -1,0 +1,73 @@
+/* Reset */
+:root {
+  --border-color: rgba(128, 128, 128, 0.845);
+  --table-header : #022D92;
+  --heading-size : 18px;
+  --heading-font-weight : 600;
+  --description : 16px;
+  --description-color : #919191
+
+}
+
+html,
+body {
+  margin: 0;
+  padding: 10;
+  font-family: system-ui;
+}
+
+/* A4 page setup */
+@page {
+  size: A4;
+  margin: 20mm;
+}
+
+/* Print adjustments */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Page container */
+.page {
+  width: 100%;
+}
+
+/* Page break utility */
+.page-break {
+  page-break-after: always;
+}
+
+/* styles goes here  */
+.main-container {
+  padding: 0px 20px;
+  
+}
+.logo {
+  width: 380px;
+}
+.header-1 {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-weight: 500;
+}
+
+.logo-container {
+  margin-top: 10px;
+  padding-bottom: 10px;
+  text-align: center;
+}
+.main-title{
+  margin-top: 10px;
+  background-color: var(--table-header);
+  color: white;
+  font-size: 22px;
+  text-align: center;
+  border-radius: 2px;
+  padding: 6px;
+  font-weight: var(--heading-font-weight);
+}

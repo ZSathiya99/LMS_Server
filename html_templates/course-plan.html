@@ -1,58 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-<meta charset="UTF-8" />
-<style>
-body {
-  font-family: Arial;
-  padding: 40px;
-}
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{pdf_title}}</title>
+  </head>
+  <body>
+    <div class="main-container">
+      <!-- .header container  -->
+      <div class="header-container">
+        <div class="header-1">
+          <p class="copyright">
+            © Sri Eshwar College of Engineering, Form No AC 08: Rev. No. 06:
+            Rev.dt.21-01-2025
+          </p>
+        </div>
+        <div class="logo-container">
+          <img src="{{logo_url}}" class="logo" />
+        </div>
+      </div>
 
-h1 {
-  text-align: center;
-}
-
-.section {
-  margin-top: 30px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-}
-
-th, td {
-  border: 1px solid #000;
-  padding: 8px;
-}
-
-.page-break {
-  page-break-after: always;
-}
-</style>
-</head>
-<body>
-
-<h1>COURSE PLAN</h1>
-
-<div class="section">
-  <p><strong>Name:</strong> {{name}}</p>
-  <p><strong>Department:</strong> {{department}}</p>
-  <p><strong>Year:</strong> {{year}}</p>
-</div>
-
-<div class="section">
-  <h3>Units</h3>
-  <!-- {{unitsTable}} -->
-</div>
-
-<div class="page-break"></div>
-
-<!-- <div>
-  <h3>CO-PO Mapping</h3>
-  {{copoTable}}
-</div> -->
-
-</body>
+      <div class="title-container">
+        <p class="main-title">COURSE PLAN</p>
+      </div>
+    </div>
+  </body>
 </html>
