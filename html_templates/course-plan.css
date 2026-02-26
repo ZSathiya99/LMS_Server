@@ -1,0 +1,99 @@
+/* Reset */
+:root {
+  --border-color: rgba(128, 128, 128, 0.845);
+  --table-header: #002472b6;
+  --heading-size: 18px;
+  --heading-font-weight: 600;
+  --description: 16px;
+  --description-color: #919191;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 10;
+  font-family: system-ui;
+}
+
+/* A4 page setup */
+@page {
+  size: A4;
+  margin: 20mm;
+}
+
+/* Print adjustments */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Page container */
+.page {
+  width: 100%;
+}
+
+/* Page break utility */
+.page-break {
+  page-break-after: always;
+}
+
+/* styles goes here  */
+.main-container {
+  padding: 0px 40px;
+}
+.logo {
+  width: 380px;
+}
+.header-1 {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-weight: 500;
+}
+
+.logo-container {
+  margin-top: 10px;
+  padding-bottom: 10px;
+  text-align: center;
+}
+.main-title {
+  margin-top: 10px;
+  background-color: #002472;
+  color: white;
+  font-size: 22px;
+  text-align: center;
+  border-radius: 2px;
+  padding: 6px;
+  font-weight: var(--heading-font-weight);
+}
+.first-table-title {
+  font-weight: 500;
+}
+.first-table-description {
+  color: rgb(67, 67, 67);
+  padding: 0px 10px;
+}
+.table {
+  border: 1px solid rgb(40, 40, 40);
+  border-collapse: collapse;
+  width: 100%;
+  color: white;
+}
+thead {
+  background-color: var(--table-header);
+}
+.table th {
+  padding: 10px 0px;
+  font-weight: 500;
+}
+#faculty-name-table {
+  margin-top: 10px;
+}
+.td {
+  color: black;
+  text-align: center;
+  padding: 10px;
+}
