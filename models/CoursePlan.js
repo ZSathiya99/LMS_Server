@@ -118,7 +118,7 @@ const referencesSchema = new Schema(
         type: Boolean,
         default: false
       },
-      activities: {
+      activity: {
         type: String,
         default: ''
       }
@@ -130,7 +130,7 @@ const referencesSchema = new Schema(
         type: Boolean,
         default: false
       },
-      entries: {
+      entry: {
         type: String,
         default: ''
       }
