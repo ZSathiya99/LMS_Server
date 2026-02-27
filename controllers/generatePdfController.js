@@ -1,3 +1,4 @@
+import { table } from "console";
 import fs from "fs";
 import path from "path";
 
@@ -42,6 +43,7 @@ export const getCourseHTML = async (req, res) => {
       .replace(/{{pdf_title}}/g, "Java programming")
       .replace(/{{logo_url}}/g, `${baseUrl}/pdf_assets/logo.png`);
 
+       
     res.send(html);
   } catch (err) {
     console.error("Error occured while generating course plan pdf : ", err);
