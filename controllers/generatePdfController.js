@@ -1,6 +1,8 @@
+// this is my testing branch for generating the pdf using html 
 import { table } from "console";
 import fs from "fs";
 import path from "path";
+import Course from "../models/";
 const justifications = [
   {
     coNumber: "CO 1",
@@ -56,18 +58,17 @@ const justifications = [
 // create a model to store the data's
 // import Course from "../models/Course.js";
 
+
+
 export const getCourseHTML = async (req, res) => {
   try {
-    // get the id from the params
-    // const { subject_id } = req.params;
+    const { subject_id } = req.params;
 
-    // find the course plan using subject_id
-    // const course = await Course.findById(subject_id);
+    const course = await Course.findById(subject_id);
 
-    // throw error if course plan does'nt exisit
-    // if (!course) {
-    //   return res.status(404).json({ message: "Course not found" });
-    // }
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
 
     const templatePath = path.join(
       process.cwd(),
@@ -80,47 +81,29 @@ export const getCourseHTML = async (req, res) => {
       "course-plan.css",
     );
 
-    const generateJustificationTable = (data) => {
-      let rows = "";
+    const generateCoPoMappingTable = (coPoMapping) => {
+  let rows = "";
 
-      data.forEach((co) => {
-        const mappingContent = co.mappings
-          .map(
-            (item) => `
-          <p><strong>${item.code}:</strong> ${item.text}</p>
-        `,
-          )
-          .join("");
+  Object.keys(coPoMapping).forEach((coKey) => {
+    const mapping = coPoMapping[coKey];
 
-        rows += `
+    let cells = "";
+
+    Object.keys(mapping).forEach((poKey) => {
+      const credit = mapping[poKey].credit;
+      cells += `<td class="td">${credit === 0 ? "-" : credit}</td>`;
+    });
+
+    rows += `
       <tr>
-        <td class="co-column td">${co.coNumber}</td>
-        <td class="justification-column td">
-          ${mappingContent}
-        </td>
+        <td class="td">${coKey}</td>
+        ${cells}
       </tr>
     `;
-      });
+  });
 
-      return `
-           <ul class="left-text">
-          <li>
-            <strong>8.8 CO-PO Mapping Justification:</strong>
-          </li>
-        </ul>
-    <table class="justification-table table">
-      <thead>
-        <tr>
-          <th>CO #</th>
-          <th>Justification for mapping with PO</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows} 
-      </tbody>
-    </table>
-  `;
-    };
+  return rows;
+};
 
     let html = fs.readFileSync(templatePath, "utf8");
     const css = fs.readFileSync(cssPath, "utf8");
@@ -130,11 +113,15 @@ export const getCourseHTML = async (req, res) => {
 
     html = html.replace("</head>", `<style>${css}</style></head>`);
 
+    html = html;
     html = html
-      .replace(/{{name}}/g, "Nishanth")
-      .replace(/{{department}}/g, "Information technology")
-      .replace(/{{pdf_title}}/g, "Java programming")
-      .replace(/{{logo_url}}/g, `${baseUrl}/pdf_assets/logo.png`);
+      .replace(/{{academic_year}}/g, course.academicYear)
+      .replace(/{{program}}/g, course.program)
+      .replace(/{{course_code}}/g, course.courseCode)
+      .replace(/{{course_title}}/g, course.courseTitle)
+      .replace(/{{faculty_name}}/g, course.facultyName)
+      .replace(/{{faculty_designation}}/g, course.facultyDesignation)
+      .replace(/{{faculty_department}}/g, course.facultyDepartment);
 
     const justificationHTML = generateJustificationTable(justifications);
 
