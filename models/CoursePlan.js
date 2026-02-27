@@ -119,8 +119,8 @@ const referencesSchema = new Schema(
         default: false
       },
       activities: {
-        type: [String],
-        default: []
+        type: String,
+        default: ''
       }
     },
 
@@ -131,8 +131,8 @@ const referencesSchema = new Schema(
         default: false
       },
       entries: {
-        type: [String],
-        default: []
+        type: String,
+        default: ''
       }
     }
   },
