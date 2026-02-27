@@ -78,6 +78,9 @@ export const updateCoursePlanStep = async (req, res) => {
         program: allocation.department,
 
         facultyId: faculty._id,
+        facultyName: `${faculty.salutation}${faculty.firstName} ${faculty.lastName}`,
+        facultyDesignation: faculty.designation,
+        facultyDepartment: faculty.department,
 
         courseDetails: data
       });
@@ -128,9 +131,7 @@ export const getCoursePlanStep = async (req, res) => {
       const data = await CoursePlan.findOne(
         { sectionId, subjectId },
         { _id: 0, __v: 0 }
-      )
-        .populate('facultyId', 'firstName lastName designation department')
-        .lean();
+      ).lean();
 
       if (!data) {
         return res.status(404).json({

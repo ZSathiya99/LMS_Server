@@ -165,7 +165,9 @@ const coursePlanSchema = new Schema(
       ref: 'Faculty',
       required: true
     },
-
+    facultyName: { type: String, default: '' },
+    facultyDesignation: { type: String, default: '' },
+    facultyDepartment: { type: String, default: '' },
     courseDetails: { type: courseDetailsSchema, default: {} },
     coPoMapping: { type: coPoMappingSchema, default: {} },
     references: { type: referencesSchema, default: {} }
