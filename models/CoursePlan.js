@@ -1,89 +1,181 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const CoursePlanSchema = new mongoose.Schema({
+const { Schema } = mongoose;
 
-  subjectId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Subject",
-    required: true,
+/* =========================
+   Sub Schemas
+========================= */
+
+const mappingItemSchema = new Schema(
+  {
+    justification: { type: String, trim: true, default: '' },
+    credit: { type: Number, default: 0 }
   },
+  { _id: false }
+);
 
-  sectionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-  },
-
-  department: String,
-  semester: Number,
-
-  // 🔹 STEP 1 – COURSE DETAILS
-  courseDetails: {
-    courseType: String,
-    coRequisites: String,
-    preRequisites: String,
-    courseDescription: String,
-    courseObjectives: [String],
-    courseOutcomes: [
-      {
-        unit: String,
-        statement: String,
-        rtbl: String
-      }
-    ]
-  },
-
-  // 🔹 STEP 2 – CO-PO Mapping
-  coPoMapping: [
-    {
-      co: String,
-      po: String,
-      justification: String,
-      level: Number
+const courseOutcomeSchema = new Schema(
+  {
+    unit: { type: String, required: true, trim: true },
+    statement: { type: String, default: '', trim: true },
+    rtbl: {
+      type: String,
+      enum: ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'],
+      required: true
     }
-  ],
+  },
+  { _id: false }
+);
 
-  // 🔹 STEP 3 – Reference & Others
-  references: {
-    textBooks: [String],
-    referenceBooks: [String],
-    journals: [String],
-    webResources: [String],
+const courseDetailsSchema = new Schema(
+  {
+    courseType: {
+      type: String,
+      enum: ['T', 'TP', 'TPJ', 'P', 'PJ', 'I'],
+      required: true
+    },
+    preRequisites: { type: String, default: '', trim: true },
+    coRequisites: { type: String, default: '', trim: true },
+    courseDescription: { type: String, default: '', trim: true },
+    courseObjectives: { type: String, default: '', trim: true },
+    courseOutcomes: { type: [courseOutcomeSchema], default: [] }
+  },
+  { _id: false }
+);
+
+const coPoSchema = new Schema(
+  {
+    PO0: { type: mappingItemSchema, default: () => ({}) },
+    PO1: { type: mappingItemSchema, default: () => ({}) },
+    PO2: { type: mappingItemSchema, default: () => ({}) },
+    PO3: { type: mappingItemSchema, default: () => ({}) },
+    PO4: { type: mappingItemSchema, default: () => ({}) },
+    PO5: { type: mappingItemSchema, default: () => ({}) },
+    PO6: { type: mappingItemSchema, default: () => ({}) },
+    PO7: { type: mappingItemSchema, default: () => ({}) },
+    PO8: { type: mappingItemSchema, default: () => ({}) },
+    PO9: { type: mappingItemSchema, default: () => ({}) },
+    PO10: { type: mappingItemSchema, default: () => ({}) },
+    PO11: { type: mappingItemSchema, default: () => ({}) },
+    PSO1: { type: mappingItemSchema, default: () => ({}) },
+    PSO2: { type: mappingItemSchema, default: () => ({}) },
+    PSO3: { type: mappingItemSchema, default: () => ({}) }
+  },
+  { _id: false }
+);
+
+const coPoMappingSchema = new Schema(
+  {
+    CO1: { type: coPoSchema, default: () => ({}) },
+    CO2: { type: coPoSchema, default: () => ({}) },
+    CO3: { type: coPoSchema, default: () => ({}) },
+    CO4: { type: coPoSchema, default: () => ({}) },
+    CO5: { type: coPoSchema, default: () => ({}) }
+  },
+  { _id: false }
+);
+
+const referencesSchema = new Schema(
+  {
+    textBooks: {
+      type: [String],
+      default: []
+    },
+
+    referenceBooks: {
+      type: [String],
+      default: []
+    },
+
+    journals: {
+      type: [String],
+      default: []
+    },
+
+    webResources: {
+      type: [String],
+      default: []
+    },
+
+    // 🔥 NEW
     moocCourses: [
       {
-        platform: String,
-        courseName: String
+        platform: { type: String, trim: true, default: '' },
+        courseName: { type: String, trim: true, default: '' },
+        _id: false
       }
     ],
-    projects: [String],
-    termWork: Boolean,
-    gapIdentification: Boolean
-  },
 
-  // 🔹 STEP 4 – Lesson Planner
-  lessonPlanner: {
-    theory: [
-      {
-        unit: String,
-        topic: String,
-        pedagogy: String,
-        reference: String
+    // 🔥 NEW
+    projects: {
+      type: [String],
+      default: []
+    },
+
+    // 🔥 NEW
+    termWork: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      activities: {
+        type: [String],
+        default: []
       }
-    ],
-    lab: [
-      {
-        experiment: String,
-        objective: String
+    },
+
+    // 🔥 NEW
+    gapIdentification: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      entries: {
+        type: [String],
+        default: []
       }
-    ]
+    }
   },
+  { _id: false }
+);
 
-  completionPercentage: {
-    type: Number,
-    default: 0
-  }
+/* =========================
+   MAIN SCHEMA
+========================= */
 
-}, { timestamps: true });
+const coursePlanSchema = new Schema(
+  {
+    sectionId: { type: String, required: true, trim: true },
+    subjectId: { type: String, required: true, trim: true },
 
-CoursePlanSchema.index({ subjectId: 1, sectionId: 1 }, { unique: true });
+    // metadata
+    academicYear: String,
+    courseCode: String,
+    courseTitle: String,
 
-export default mongoose.model("CoursePlan", CoursePlanSchema);
+    semester: Number,
+    year: Number,
+
+    // course department
+    program: String,
+
+    // faculty reference
+    facultyId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Faculty',
+      required: true
+    },
+
+    courseDetails: { type: courseDetailsSchema, default: {} },
+    coPoMapping: { type: coPoMappingSchema, default: {} },
+    references: { type: referencesSchema, default: {} }
+  },
+  { timestamps: true }
+);
+
+coursePlanSchema.index({ sectionId: 1, subjectId: 1 }, { unique: true });
+
+const CoursePlan =
+  mongoose.models.CoursePlan || mongoose.model('CoursePlan', coursePlanSchema);
+
+export default CoursePlan;
