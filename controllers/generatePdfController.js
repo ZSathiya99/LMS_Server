@@ -1,8 +1,8 @@
-// this is my testing branch for generating the pdf using html 
+// this is my testing branch for generating the pdf using html
 import { table } from "console";
 import fs from "fs";
 import path from "path";
-import Course from "../models/";
+import Course from "../models/CoursePlan.js";
 const justifications = [
   {
     coNumber: "CO 1",
@@ -58,8 +58,6 @@ const justifications = [
 // create a model to store the data's
 // import Course from "../models/Course.js";
 
-
-
 export const getCourseHTML = async (req, res) => {
   try {
     const { subject_id } = req.params;
@@ -82,28 +80,28 @@ export const getCourseHTML = async (req, res) => {
     );
 
     const generateCoPoMappingTable = (coPoMapping) => {
-  let rows = "";
+      let rows = "";
 
-  Object.keys(coPoMapping).forEach((coKey) => {
-    const mapping = coPoMapping[coKey];
+      Object.keys(coPoMapping).forEach((coKey) => {
+        const mapping = coPoMapping[coKey];
 
-    let cells = "";
+        let cells = "";
 
-    Object.keys(mapping).forEach((poKey) => {
-      const credit = mapping[poKey].credit;
-      cells += `<td class="td">${credit === 0 ? "-" : credit}</td>`;
-    });
+        Object.keys(mapping).forEach((poKey) => {
+          const credit = mapping[poKey].credit;
+          cells += `<td class="td">${credit === 0 ? "-" : credit}</td>`;
+        });
 
-    rows += `
+        rows += `
       <tr>
         <td class="td">${coKey}</td>
         ${cells}
       </tr>
     `;
-  });
+      });
 
-  return rows;
-};
+      return rows;
+    };
 
     let html = fs.readFileSync(templatePath, "utf8");
     const css = fs.readFileSync(cssPath, "utf8");
