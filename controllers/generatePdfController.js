@@ -62,11 +62,14 @@ export const getCourseHTML = async (req, res) => {
   try {
     const { subject_id } = req.params;
 
-    const course = await Course.findById(subject_id);
+    const course = await Course.findOne({ subjectId: subject_id });
 
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      return res.status(404).json({ message: "Course not found in DB" });
     }
+    
+    console.log("Course fetched from DB : ", course);
+    console.log("faculty name : ", course.facultyName);
 
     const templatePath = path.join(
       process.cwd(),
@@ -121,12 +124,17 @@ export const getCourseHTML = async (req, res) => {
       .replace(/{{faculty_designation}}/g, course.facultyDesignation)
       .replace(/{{faculty_department}}/g, course.facultyDepartment);
 
-    const justificationHTML = generateJustificationTable(justifications);
+    const justificationHTML = generateCoPoMappingTable(justifications);
 
     html = html.replace(
       `<div class="justification-container"></div>`,
       `<div class="justification-container">${justificationHTML}</div>`,
     );
+
+    // res.status(200).json({
+    //   message: "Course fetched and html generatedd successfully",
+    //   data: course,
+    // });
     res.send(html);
   } catch (err) {
     console.error("Error occured while generating course plan pdf : ", err);
