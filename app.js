@@ -67,7 +67,8 @@ app.use("/uploads", express.static("uploads"));
 app.use("/api", materialRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/course-plan", coursePlanRoutes);
-app.use("/api/course-plan/generatePdf", generatePdfRoutes);
+app.use("/api/course-pdf", generatePdfRoutes);
+
 
 // access assets folder when downloading the pdf
 app.use("/pdf_assets", express.static(path.join(process.cwd(), "pdf_assets")));

@@ -261,59 +261,23 @@
             <strong>8. Course Details: </strong>
             <ul>
               <li>
-                <strong>8.1 Course Type: T/TP/TPJ/P/PJ/I </strong>
+                <strong>8.1 Course Type: {{courseType}}</strong>
               </li>
               <li>
                 <strong>8.2 Course Pre-requisites: </strong>
-                Programming in C / Java, Basic Software Engineering
+                {{preRequisites}}
               </li>
               <li>
                 <strong>8.3 Course Co-requisites to:</strong>
-                Integrated
+                {{coRequisites}}
               </li>
               <li>
                 <strong>8.4 Course Description:</strong>
-                This course is a fundamental course that delves into the
-                principles and practices of developing software systems using
-                object-oriented methodologies. This course emphasizes
-                understanding the problem domain, designing robust solutions,
-                and implementing them efficiently. Students will gain insights
-                into various phases of the software development lifecycle, from
-                requirements gathering to deployment, with a focus on
-                object-oriented concepts.
+                {{courseDescription}}
               </li>
               <li>
                 <strong>8.5 Course Objectives:</strong>
-                <ol>
-                  <li>
-                    Identify the Object-Oriented paradigms enabling efficient
-                    software development and system design.
-                  </li>
-                  <li>
-                    Develop the ability to document comprehensive Software
-                    Requirements Specifications (SRS) and identify use cases,
-                    ensuring a clear understanding of system functionality and
-                    design constraints.
-                  </li>
-                  <li>
-                    Create detailed domain models, class diagrams, and
-                    interaction diagrams based on real-world project scenarios,
-                    demonstrating the application of object-oriented principles
-                    in system modeling.
-                  </li>
-                  <li>
-                    Design and implement dynamic system behavior using UML
-                    State, Activity, and Component diagrams, accurately
-                    representing system states, workflows, and architectural
-                    components.
-                  </li>
-                  <li>
-                    Apply testing methodologies to validate software systems
-                    through the execution of use-case-based test scenarios,
-                    ensuring the reliability and correctness of system
-                    implementations.
-                  </li>
-                </ol>
+                {{courseObjectives}}
               </li>
               <li>
                 <strong>8.6 Course Outcomes:</strong>
@@ -337,44 +301,7 @@
           </thead>
 
           <tbody>
-            <tr>
-              <td class="td">U23CS493.1</td>
-              <td class="td">
-                Analyze various software process models while demonstrating an
-                understanding of the fundamentals of object-oriented paradigms.
-              </td>
-              <td class="td">K4</td>
-            </tr>
-            <tr>
-              <td class="td">U23CS493.2</td>
-              <td class="td">
-                Analyze the complexity of the project and develop the project
-                plan
-              </td>
-              <td class="td">K4</td>
-            </tr>
-            <tr>
-              <td class="td">U23CS493.3</td>
-              <td class="td">
-                Construct UML behavioural diagrams for a project.
-              </td>
-              <td class="td">K6</td>
-            </tr>
-            <tr>
-              <td class="td">U23CS493.4</td>
-              <td class="td">
-                Construct UML structural diagrams for a project.
-              </td>
-              <td class="td">K6</td>
-            </tr>
-            <tr>
-              <td class="td">U23CS493.5</td>
-              <td class="td">
-                Demonstrate the knowledge on contemporary tools in
-                object-oriented analysis and design.
-              </td>
-              <td class="td">K3</td>
-            </tr>
+            {{course_outcomes_rows}}
           </tbody>
         </table>
 
@@ -412,8 +339,9 @@
             </thead>
 
             <tbody>
+              {{co_po_rows}}
               <!-- Row 1 -->
-              <tr>
+              <!-- <tr>
                 <td class="td ">U23CS493.1</td>
                 <td class="td ">3</td>
                 <td class="td ">3</td>
@@ -429,10 +357,10 @@
                 <td class="td ">3</td>
                 <td class="td ">2</td>
                 <td class="td ">3</td>
-              </tr>
+              </tr> -->
 
               <!-- Row 2 -->
-              <tr>
+              <!-- <tr>
                 <td class="td ">U23CS493.2</td>
                 <td class="td ">3</td>
                 <td class="td ">3</td>
@@ -448,10 +376,10 @@
                 <td class="td ">3</td>
                 <td class="td ">2</td>
                 <td class="td ">3</td>
-              </tr>
+              </tr> -->
 
               <!-- Row 3 -->
-              <tr>
+              <!-- <tr>
                 <td class="td ">U23CS493.3</td>
                 <td class="td ">3</td>
                 <td class="td ">3</td>
@@ -467,10 +395,10 @@
                 <td class="td ">3</td>
                 <td class="td ">2</td>
                 <td class="td ">3</td>
-              </tr>
+              </tr> -->
 
               <!-- Row 4 -->
-              <tr>
+              <!-- <tr>
                 <td class="td ">U23CS493.4</td>
                 <td class="td ">3</td>
                 <td class="td ">3</td>
@@ -486,10 +414,10 @@
                 <td class="td ">3</td>
                 <td class="td ">2</td>
                 <td class="td ">3</td>
-              </tr>
+              </tr> -->
 
               <!-- Row 5 -->
-              <tr>
+              <!-- <tr>
                 <td class="td ">U23CS493.5</td>
                 <td class="td ">3</td>
                 <td class="td ">3</td>
@@ -505,10 +433,10 @@
                 <td class="td ">3</td>
                 <td class="td ">2</td>
                 <td class="td ">3</td>
-              </tr>
+              </tr> -->
 
               <!-- Average -->
-              <tr>
+              <!-- <tr>
                 <td class="td "><strong>Average</strong></td>
                 <td class="td ">3</td>
                 <td class="td ">3</td>
@@ -524,14 +452,46 @@
                 <td class="td ">3</td>
                 <td class="td ">2</td>
                 <td class="td ">3</td>
-              </tr>
+              </tr> -->
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- 8.8 CO-PO Mapping Justification: -->
-      <div class="justification-container"></div>
+      <h3>8.8 CO-PO Mapping Justification</h3>
+      <div class="justification-container">{{coPoJustification}}</div>
+      <!-- <div class="page-break"></div> -->
+
+      <h3>8.9 Syllabus and References</h3>
+      {{referencesSection}}
+
+      <h3>8.10 Gap Identification</h3>
+      <p>{{gapIdentification}}</p>
+
+      <h3>8.11 Content Beyond Syllabus</h3>
+      <p>{{contentBeyondSyllabus}}</p>
+
+      <div class="page-break"></div>
+
+      <h3>10. Lesson Plan</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Topic</th>
+            <th>Language</th>
+            <th>Reference</th>
+            <th>Date</th>
+            <th>Aid</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{lessonPlanRows}}
+        </tbody>
+      </table>
+
+      <div class="footer">Page <span class="pageNumber"></span></div>
     </div>
   </body>
 </html>

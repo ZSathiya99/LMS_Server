@@ -3,6 +3,10 @@ import { getCourseHTML } from "../controllers/generatePdfController.js";
 
 const router = express.Router();
 
-router.get("/:subject_id", getCourseHTML);
+/* 1️⃣ PDF ROUTE FIRST */
+router.get(
+  "/generatePdf/:subject_id/:section_id",
+  getCourseHTML
+);
 
 export default router;
