@@ -1,7 +1,8 @@
 import express from 'express';
 import {
   updateCoursePlanStep,
-  getCoursePlanStep
+  getCoursePlanStep,
+  deleteTheoryPlannerTopic
 } from '../controllers/coursePlanController.js';
 
 import { verifyToken } from '../middleware/authMiddleware.js';
@@ -13,5 +14,11 @@ const router = express.Router();
 
 router.patch('/:step', verifyToken, updateCoursePlanStep);
 router.get('/:step/:sectionId/:subjectId', verifyToken, getCoursePlanStep);
+
+router.delete(
+  '/theoryPlanner/deleteTopic',
+  verifyToken,
+  deleteTheoryPlannerTopic
+);
 
 export default router;

@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 /* =========================
-   Sub Schemas
+   SUB SCHEMAS
 ========================= */
 
 const mappingItemSchema = new Schema(
@@ -34,14 +34,60 @@ const courseDetailsSchema = new Schema(
       enum: ['T', 'TP', 'TPJ', 'P', 'PJ', 'I'],
       required: true
     },
-    preRequisites: { type: String, default: '', trim: true },
-    coRequisites: { type: String, default: '', trim: true },
-    courseDescription: { type: String, default: '', trim: true },
-    courseObjectives: { type: String, default: '', trim: true },
+    preRequisites: String,
+    coRequisites: String,
+    courseDescription: String,
+    courseObjectives: String,
     courseOutcomes: { type: [courseOutcomeSchema], default: [] }
   },
   { _id: false }
 );
+
+/* =========================
+   THEORY PLANNER
+========================= */
+
+const theoryTopicSchema = new Schema(
+  {
+    topicName: { type: String, required: true, trim: true },
+    teachingLanguage: {
+      type: String,
+      enum: ['English', 'Tamil'],
+      default: 'English'
+    },
+    date: { type: String, required: true },
+    hours: { type: Schema.Types.Mixed, required: true },
+    teachingAid: { type: String, required: true, trim: true },
+    referenceBook: { type: String, required: true, trim: true },
+    createdAt: { type: Date, default: Date.now }
+  },
+  { _id: false }
+);
+
+/* reusable unit block */
+const theoryUnitSchema = new Schema(
+  {
+    title: { type: String, default: '' },
+    topics: { type: [theoryTopicSchema], default: [] }
+  },
+  { _id: false }
+);
+
+const theoryPlannerSchema = new Schema(
+  {
+    UNIT1: { type: theoryUnitSchema, default: () => ({}) },
+    UNIT2: { type: theoryUnitSchema, default: () => ({}) },
+    UNIT3: { type: theoryUnitSchema, default: () => ({}) },
+    UNIT4: { type: theoryUnitSchema, default: () => ({}) },
+    UNIT5: { type: theoryUnitSchema, default: () => ({}) },
+    OTHERS: { type: theoryUnitSchema, default: () => ({}) } // 🔥 NEW
+  },
+  { _id: false }
+);
+
+/* =========================
+   CO-PO
+========================= */
 
 const coPoSchema = new Schema(
   {
@@ -74,6 +120,10 @@ const coPoMappingSchema = new Schema(
   },
   { _id: false }
 );
+
+/* =========================
+   REFERENCES
+========================= */
 
 const referencesSchema = new Schema(
   {
@@ -119,8 +169,8 @@ const referencesSchema = new Schema(
         default: false
       },
       activity: {
-        type: String,
-        default: ''
+        type: [String],
+        default: []
       }
     },
 
@@ -131,8 +181,8 @@ const referencesSchema = new Schema(
         default: false
       },
       entry: {
-        type: String,
-        default: ''
+        type: [String],
+        default: []
       }
     }
   },
@@ -148,36 +198,29 @@ const coursePlanSchema = new Schema(
     sectionId: { type: String, required: true, trim: true },
     subjectId: { type: String, required: true, trim: true },
 
-    // metadata
     academicYear: String,
     courseCode: String,
     courseTitle: String,
 
     semester: Number,
     year: Number,
-
-    // course department
     program: String,
 
-    // faculty reference
-    facultyId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Faculty',
-      required: true
-    },
-    facultyName: { type: String, default: '' },
-    facultyDesignation: { type: String, default: '' },
-    facultyDepartment: { type: String, default: '' },
+    facultyId: { type: Schema.Types.ObjectId, ref: 'Faculty', required: true },
+    facultyName: String,
+    facultyDesignation: String,
+    facultyDepartment: String,
+
     courseDetails: { type: courseDetailsSchema, default: {} },
     coPoMapping: { type: coPoMappingSchema, default: {} },
-    references: { type: referencesSchema, default: {} }
+    references: { type: referencesSchema, default: {} },
+
+    theoryPlanner: { type: theoryPlannerSchema, default: {} }
   },
   { timestamps: true }
 );
 
 coursePlanSchema.index({ sectionId: 1, subjectId: 1 }, { unique: true });
 
-const CoursePlan =
-  mongoose.models.CoursePlan || mongoose.model('CoursePlan', coursePlanSchema);
-
-export default CoursePlan;
+export default mongoose.models.CoursePlan ||
+  mongoose.model('CoursePlan', coursePlanSchema);
