@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 import Student from "../models/Student.js";
 import StudentAttendance from "../models/StudentAttendance.js";
 import Subject from "../models/subjectModel.js";
+import ExcelJS from "exceljs";
+
+
 
 /* =========================================================
    POST — MARK SINGLE ATTENDANCE
@@ -258,6 +261,130 @@ export const getAttendancePrint = async (req, res) => {
     });
   } catch (error) {
     console.error("Attendance Print Error:", error);
+    return res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+
+export const downloadAttendanceExcel = async (req, res) => {
+  try {
+    let { department, year, section, subjectId, date, hour } = req.query;
+
+    if (!department || !year || !section || !subjectId || !date || !hour) {
+      return res.status(400).json({
+        message: "All query parameters are required",
+      });
+    }
+
+    if (section.startsWith("Section ")) {
+      section = section.replace("Section ", "");
+    }
+
+    const subject = await Subject.findById(subjectId);
+    if (!subject) {
+      return res.status(404).json({ message: "Subject not found" });
+    }
+
+    const students = await Student.find({
+      department: { $regex: new RegExp(`^${department.trim()}$`, "i") },
+      year: { $regex: new RegExp(year.trim(), "i") },
+      section: { $regex: new RegExp(`^${section.trim()}$`, "i") },
+    }).sort({ rollNumber: 1 });
+
+    if (!students.length) {
+      return res.status(404).json({ message: "No students found" });
+    }
+
+    const formattedDate = new Date(date).toISOString().split("T")[0];
+
+    const attendanceRecords = await StudentAttendance.find({
+      subjectId,
+      date: formattedDate,
+      hour: hour.toString().trim(),
+    });
+
+    let statusMap = {};
+    attendanceRecords.forEach((record) => {
+      statusMap[record.studentId.toString()] = record.status;
+    });
+
+    let presentCount = 0;
+    let absentCount = 0;
+
+    const attendanceList = students.map((student, index) => {
+      const status = statusMap[student._id.toString()] || "Absent";
+      if (status === "Present") presentCount++;
+      else absentCount++;
+
+      return {
+        sno: index + 1,
+        rollNumber: student.rollNumber,
+        name: `${student.firstName} ${student.lastName}`,
+        status,
+      };
+    });
+
+    // ✅ Create Excel Workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Attendance");
+
+    // Title
+    worksheet.addRow(["Attendance Report"]).font = { bold: true };
+
+    worksheet.addRow([]);
+    worksheet.addRow(["Faculty", req.user.name]);
+    worksheet.addRow(["Department", department]);
+    worksheet.addRow(["Year", year]);
+    worksheet.addRow(["Section", section]);
+    worksheet.addRow(["Subject", subject.subject]);
+    worksheet.addRow(["Subject Code", subject.code]);
+    worksheet.addRow(["Date", formattedDate]);
+    worksheet.addRow(["Hour", hour]);
+    worksheet.addRow(["Total Students", students.length]);
+    worksheet.addRow(["Present", presentCount]);
+    worksheet.addRow(["Absent", absentCount]);
+
+    worksheet.addRow([]);
+
+    // Table Header
+    const headerRow = worksheet.addRow(["S.No", "Roll Number", "Name", "Status"]);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+
+    // Attendance Data
+    attendanceList.forEach((student) => {
+      worksheet.addRow([
+        student.sno,
+        student.rollNumber,
+        student.name,
+        student.status,
+      ]);
+    });
+
+    // Auto column width
+    worksheet.columns.forEach((column) => {
+      column.width = 20;
+    });
+
+    // Set headers for download
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Attendance_${formattedDate}.xlsx`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error("Attendance Excel Error:", error);
     return res.status(500).json({
       message: "Server Error",
       error: error.message,
