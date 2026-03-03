@@ -1,64 +1,80 @@
-/* Reset */
+/* =========================
+   ROOT VARIABLES
+========================= */
 :root {
-  --border-color: rgba(128, 128, 128, 0.845);
+  --border-color: #000;
   --table-header: #002472b6;
   --heading-size: 16px;
   --heading-font-weight: 600;
-  --description: 16px;
-  --description-color: #919191;
+
+  /* CHANGE THESE */
+  --font-table-header: 16px;
+  --font-table-body: 16px;
 }
 
+/* =========================
+   GLOBAL
+========================= */
 html,
 body {
   margin: 0;
-  padding: 10;
+  padding: 10px;
   font-family: system-ui;
 }
 
-/* A4 page setup */
+/* =========================
+   PAGE SETUP
+========================= */
 @page {
   size: A4;
   margin: 20mm;
 }
 
-/* Print adjustments */
 @media print {
   body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
   .po-table {
     transform: scale(0.85);
     transform-origin: top left;
     width: 118%;
   }
+
+  .tw-sl-table,
+  .assessment-dates-table,
+  .signature-section {
+    page-break-inside: avoid;
+  }
 }
 
-/* Page container */
-.page {
-  width: 100%;
+/* =========================
+   LAYOUT
+========================= */
+.main-container {
+  padding: 0 40px;
 }
 
-/* Page break utility */
 .page-break {
   page-break-after: always;
 }
 
-/* styles goes here  */
-.main-container {
-  padding: 0px 40px;
-}
 .heading {
   font-weight: var(--heading-font-weight);
   font-size: var(--heading-size);
 }
+
+/* =========================
+   HEADER
+========================= */
 .logo {
   width: 380px;
 }
+
 .header-1 {
   font-size: 12px;
   display: flex;
-  align-items: center;
   justify-content: flex-end;
   font-weight: 500;
 }
@@ -68,87 +84,334 @@ body {
   padding-bottom: 10px;
   text-align: center;
 }
+
 .main-title {
   margin-top: 10px;
   background-color: #002472;
-  color: white;
+  color: #fff;
   font-size: 22px;
   text-align: center;
   border-radius: 2px;
   padding: 6px;
   font-weight: var(--heading-font-weight);
 }
+
+/* =========================
+   FIRST INFO TABLE
+========================= */
 .first-table-title {
   font-weight: 500;
 }
+
 .first-table-description {
   color: rgb(67, 67, 67);
-  padding: 0px 10px;
-}
-.table {
-  border: 1px solid rgb(40, 40, 40);
-  border-collapse: collapse;
-  width: 100%;
-  color: white;
-}
-thead {
-  background-color: var(--table-header);
-}
-.table th {
-  padding: 10px 0px;
-  font-weight: 500;
-  text-align: center;
+  padding: 0 10px;
 }
 
+/* =========================
+   TABLE BASE
+========================= */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color);
+  color: #000;
+}
+
+.table th {
+  padding: 12px 20px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  font-weight: 500;
+  font-size: var(--font-table-header);
+}
+
+.table td {
+  padding: 12px 20px;
+  border: 1px solid var(--border-color);
+  font-size: var(--font-table-body);
+}
+
+thead {
+  background-color: var(--table-header);
+  color: #fff;
+}
+
+/* =========================
+   SPECIAL TABLES
+========================= */
 #faculty-name-table {
   margin-top: 10px;
 }
+
 .td {
-  color: black;
   text-align: center;
   padding: 10px;
 }
+
+.po-table .sm {
+  font-size: 10px;
+}
+
+/* =========================
+   TEXT HELPERS
+========================= */
 .li-mt {
   margin-top: 10px;
 }
+
 li {
   margin-top: 10px;
   list-style-type: none;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse; /* Single clean borders */
-}
-
-/* Header spacing left & right */
-.table th {
-  padding: 12px 20px; /* Top/Bottom 12px, Left/Right 20px */
-  text-align: center;
-  border: 1px solid #000; /* Column borders */
-}
-
-/* Body cells */
-.table td {
-  padding: 12px 20px;
-  border: 1px solid #000; /* Column borders */
-}
-
-/* Optional: Outer border thicker */
-.table {
-  border: 1px solid #000;
-}
 .left-text {
   list-style-type: none;
   margin-left: 20px;
 }
 
-.sm {
-  font-size: 10px;
-}
-.justification-column {
-  text-align: left;
-}
 .text-left {
+  text-align: left !important;
+}
+
+.text-left td {
   text-align: left;
+  vertical-align: top;
+  line-height: 1.4;
+}
+
+/* =========================
+   EXPERIMENTS
+========================= */
+.experiments-table td {
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 10px;
+  font-size: var(--font-table-body);
+}
+
+.main-point {
+  margin: 2px 0 2px 10px;
+}
+
+.sub-point {
+  padding-left: 40px;
+  margin: 2px 0;
+  display: block;
+}
+
+/* =========================
+   COURSE OUTCOME TABLE
+========================= */
+.course-outcome-table td:nth-child(2),
+.course-outcome-table th:nth-child(2) {
+  text-align: left;
+}
+
+/* =========================
+   SYLLABUS TABLE
+========================= */
+.syllabus-main-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.syllabus-main-table td {
+  border: 1px solid #000;
+  text-align: center;
+  vertical-align: middle;
+  padding: 4px !important;
+  font-size: var(--font-table-body);
+}
+
+.syllabus-code {
+  width: 15%;
+}
+
+.syllabus-title {
+  width: 45%;
+  padding-left: 10px !important;
+  font-size: 16px;
+}
+
+.credit-label {
+  font-weight: bold;
+  background-color: #fff;
+  height: 20px;
+}
+
+.credit-box {
+  width: 5%;
+  font-size: 13px;
+}
+
+.unit-row,
+.unit-content {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 3px !important;
+  padding-right: 8px !important;
+  text-align: left !important;
+  margin: 0;
+}
+
+/* =========================
+   ASSESSMENT TABLE
+========================= */
+.assessment-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #000;
+}
+
+.assessment-table th,
+.assessment-table td {
+  border: 1px solid #000;
+  text-align: center;
+  padding: 6px 2px;
+  font-size: var(--font-table-body);
+}
+
+.bg-gray {
+  background-color: #49639a;
+  font-weight: bold;
+}
+
+/* =========================
+   LESSON PLAN TABLE
+========================= */
+.lesson-plan-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  table-layout: fixed; /* ADD THIS */
+}
+
+.lesson-plan-table th:nth-child(1),
+.lesson-plan-table td:nth-child(1) {
+  width: 5%;
+}
+
+.lesson-plan-table th:nth-child(2),
+.lesson-plan-table td:nth-child(2) {
+  width: 5%;
+}
+
+.lesson-plan-table th:nth-child(3),
+.lesson-plan-table td:nth-child(3) {
+  width: 40%; /* TOPIC COLUMN */
+}
+
+.lesson-plan-table th:nth-child(4),
+.lesson-plan-table td:nth-child(4) {
+  width: 15%;
+}
+
+.lesson-plan-table th:nth-child(5),
+.lesson-plan-table td:nth-child(5) {
+  width: 10%;
+}
+
+.lesson-plan-table th:nth-child(6),
+.lesson-plan-table td:nth-child(6) {
+  width: 12.5%;
+}
+
+.lesson-plan-table th:nth-child(7),
+.lesson-plan-table td:nth-child(7) {
+  width: 12.5%;
+}
+
+.lesson-plan-table th {
+  font-size: var(--font-table-header);
+}
+
+.lesson-plan-table td {
+  font-size: var(--font-table-body);
+}
+
+/* =========================
+   TERM WORK TABLE (FIXED)
+========================= */
+.tw-sl-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #000;
+}
+
+.tw-sl-table th {
+  font-size: var(--font-table-header);
+}
+
+.tw-sl-table td {
+  font-size: var(--font-table-body);
+}
+
+.tw-sl-table th,
+.tw-sl-table td {
+  border: 1px solid #000;
+  padding: 10px 5px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* =========================
+   ASSESSMENT DATES TABLE (FIXED)
+========================= */
+.assessment-dates-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #000;
+}
+
+.assessment-dates-table th {
+  font-size: var(--font-table-header);
+}
+
+.assessment-dates-table td {
+  font-size: var(--font-table-body);
+}
+
+.assessment-dates-table th,
+.assessment-dates-table td {
+  border: 1px solid #000;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+/* =========================
+   SIGNATURE
+========================= */
+.signature-section {
+  margin-top: 40px;
+  font-size: 16px;
+}
+
+.sig-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+}
+
+.sig-col {
+  width: 45%;
+}
+
+.sig-space {
+  height: 60px;
+}
+
+.sig-divider {
+  border: 0;
+  border-top: 1.5px solid #000;
+  margin: 40px 0 20px;
+}
+
+.footer-page {
+  text-align: right;
+  margin-top: 50px;
+  font-size: 12px;
+  border-top: 1px solid #ddd;
+  padding-top: 5px;
 }

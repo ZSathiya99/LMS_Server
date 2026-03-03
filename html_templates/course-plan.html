@@ -1,13 +1,11 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>{{pdf_title}}</title>
-    <!-- <link rel="stylesheet" href="./style.css" /> -->
   </head>
   <body>
     <div class="main-container">
-      <!-- .header container  -->
       <div class="header-container">
         <div class="header-1">
           <p class="copyright">
@@ -16,7 +14,7 @@
           </p>
         </div>
         <div class="logo-container">
-          <img src="{{logo_url}}" class="logo" />
+          <img src="{{logo_url}}" class="logo" alt="Logo" />
         </div>
       </div>
 
@@ -24,11 +22,9 @@
         <p class="main-title">COURSE PLAN</p>
       </div>
 
-      <!-- first page  -->
-
       <table>
         <tr>
-          <td class="first-table-title">Accademic Year :</td>
+          <td class="first-table-title">Academic Year :</td>
           <td class="first-table-description">{{academic_year}}</td>
         </tr>
         <tr>
@@ -50,8 +46,6 @@
         </tr>
       </table>
 
-      <!-- faculty names table  -->
-
       <table id="faculty-name-table" class="table">
         <thead>
           <tr class="tab-header">
@@ -69,7 +63,6 @@
         </tbody>
       </table>
 
-      <!-- vision of the institution -->
       <div class="vision-container">
         <ol>
           <li class="li-mt">
@@ -127,15 +120,11 @@
             </ul>
           </li>
 
-          <!-- --------------------------------------- page break ------------------------------------  -->
-
-          <!-- second page  -->
-
           <li class="li-mt">
             <strong>5. Program Educational Objectives:</strong>
             <ul>
               <li>
-                <strong>PEO1: </strong>
+                <strong>PEO1:</strong>
                 To prepare graduates for a career in software engineering
               </li>
               <li>
@@ -145,7 +134,7 @@
                 lifelong learning
               </li>
               <li>
-                <strong>PEO3</strong>
+                <strong>PEO3:</strong>
                 To enable students to apply innovative solutions for real-life
                 problems in computer science domain.
               </li>
@@ -177,9 +166,9 @@
                 considerations.
               </li>
               <li>
-                <strong
-                  >PO4: Conduct investigations of complex problems:</strong
-                >
+                <strong>
+                  PO4: Conduct investigations of complex problems:
+                </strong>
                 Use research-based knowledge and research methods including
                 design of experiments, analysis and interpretation of data, and
                 synthesis of the information to provide valid conclusions.
@@ -199,13 +188,13 @@
                 software engineering practice.
               </li>
               <li>
-                <strong>PO7: Environment and sustainability: </strong>
+                <strong>PO7: Environment and sustainability:</strong>
                 Understand the impact of the professional engineering solutions
                 in societal and environmental contexts, and demonstrate the
                 knowledge of, and need for sustainable development.
               </li>
               <li>
-                <strong>PO8: Ethics: </strong>
+                <strong>PO8: Ethics:</strong>
                 Apply ethical principles and commit to professional ethics and
                 responsibilities and norms of the software engineering practice.
               </li>
@@ -230,7 +219,7 @@
                 multidisciplinary environments.
               </li>
               <li>
-                <strong>PO12: Life-long learning: </strong>
+                <strong>PO12: Life-long learning:</strong>
                 Recognize the need for, and have the preparation and ability to
                 engage in independent and life-long learning in the broadest
                 context of technological change.
@@ -239,32 +228,30 @@
           </li>
 
           <li class="li-mt">
-            <strong>7. Program Specific Outcomes: </strong>
+            <strong>7. Program Specific Outcomes:</strong>
             <ul>
               <li>
                 <strong>PSO1:</strong>
                 Demonstrate knowledge in open source technologies.
               </li>
               <li>
-                <strong>PSO2: </strong>
+                <strong>PSO2:</strong>
                 Develop innovative solutions by adapting emerging technologies
                 for industry oriented applications
               </li>
               <li>
-                <strong>PSO3: </strong>
+                <strong>PSO3:</strong>
                 Implement SDLC principles for project/product development.
               </li>
             </ul>
           </li>
 
           <li class="li-mt">
-            <strong>8. Course Details: </strong>
+            <strong>8. Course Details:</strong>
             <ul>
+              <li><strong>8.1 Course Type: {{courseType}}</strong></li>
               <li>
-                <strong>8.1 Course Type: {{courseType}}</strong>
-              </li>
-              <li>
-                <strong>8.2 Course Pre-requisites: </strong>
+                <strong>8.2 Course Pre-requisites:</strong>
                 {{preRequisites}}
               </li>
               <li>
@@ -275,23 +262,19 @@
                 <strong>8.4 Course Description:</strong>
                 {{courseDescription}}
               </li>
-              <li>
+              <li class="li-mt">
                 <strong>8.5 Course Objectives:</strong>
                 {{courseObjectives}}
               </li>
-              <li>
-                <strong>8.6 Course Outcomes:</strong>
-              </li>
+              <li><strong>8.6 Course Outcomes:</strong></li>
             </ul>
           </li>
         </ol>
 
-        <!-- table container  -->
         <p class="heading">
           At the end of the course, the student will be able to :
         </p>
-
-        <table class="table">
+        <table class="table course-outcome-table">
           <thead>
             <tr class="tab-header">
               <th class="th">Course Outcome No</th>
@@ -299,24 +282,22 @@
               <th class="th">RBTL</th>
             </tr>
           </thead>
-
-          <tbody>
-            {{course_outcomes_rows}}
-          </tbody>
+          <tbody>{{course_outcomes_rows}}</tbody>
         </table>
 
         <ul class="left-text">
-          <li>
-            <strong>8.7 CO-PO and CO-PSO mapping:</strong>
-          </li>
+          <li><strong>8.7 CO-PO and CO-PSO mapping:</strong></li>
         </ul>
 
-        <!-- CO-PO and CO-PSO mapping table  -->
         <div class="CO-PO_mapping_Table">
           <table class="table po-table">
             <thead>
               <tr>
-                <th class="sm" rowspan="2">Course<br />Outcome No.</th>
+                <th class="sm" rowspan="2">
+                  Course
+                  <br />
+                  Outcome No.
+                </th>
                 <th class="sm" colspan="11">Programme Outcomes</th>
                 <th class="sm" colspan="3">PSO</th>
               </tr>
@@ -337,161 +318,459 @@
                 <th class="sm">PSO-03</th>
               </tr>
             </thead>
-
-            <tbody>
-              {{co_po_rows}}
-              <!-- Row 1 -->
-              <!-- <tr>
-                <td class="td ">U23CS493.1</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">1</td>
-                <td class="td ">-</td>
-                <td class="td ">1</td>
-                <td class="td ">-</td>
-                <td class="td ">-</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">2</td>
-                <td class="td ">3</td>
-              </tr> -->
-
-              <!-- Row 2 -->
-              <!-- <tr>
-                <td class="td ">U23CS493.2</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">-</td>
-                <td class="td ">1</td>
-                <td class="td ">-</td>
-                <td class="td ">-</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">2</td>
-                <td class="td ">3</td>
-              </tr> -->
-
-              <!-- Row 3 -->
-              <!-- <tr>
-                <td class="td ">U23CS493.3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">-</td>
-                <td class="td ">1</td>
-                <td class="td ">-</td>
-                <td class="td ">-</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">2</td>
-                <td class="td ">3</td>
-              </tr> -->
-
-              <!-- Row 4 -->
-              <!-- <tr>
-                <td class="td ">U23CS493.4</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">1</td>
-                <td class="td ">-</td>
-                <td class="td ">1</td>
-                <td class="td ">-</td>
-                <td class="td ">-</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">2</td>
-                <td class="td ">3</td>
-              </tr> -->
-
-              <!-- Row 5 -->
-              <!-- <tr>
-                <td class="td ">U23CS493.5</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">-</td>
-                <td class="td ">1</td>
-                <td class="td ">-</td>
-                <td class="td ">-</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">2</td>
-                <td class="td ">3</td>
-              </tr> -->
-
-              <!-- Average -->
-              <!-- <tr>
-                <td class="td "><strong>Average</strong></td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">2</td>
-                <td class="td ">-</td>
-                <td class="td ">1</td>
-                <td class="td ">-</td>
-                <td class="td ">-</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">3</td>
-                <td class="td ">2</td>
-                <td class="td ">3</td>
-              </tr> -->
-            </tbody>
+            <tbody>{{co_po_rows}}</tbody>
           </table>
         </div>
       </div>
 
-      <!-- 8.8 CO-PO Mapping Justification: -->
-      <h3>8.8 CO-PO Mapping Justification</h3>
+      <p style="margin-bottom: 10px">
+        <strong>8.8 CO-PO Mapping Justification</strong>
+      </p>
       <div class="justification-container">{{coPoJustification}}</div>
-      <!-- <div class="page-break"></div> -->
 
-      <h3>8.9 Syllabus and References</h3>
-      {{referencesSection}}
+      <p style="margin-bottom: 10px">
+        <strong>8.9 Syllabus and References:</strong>
+      </p>
 
-      <h3>8.10 Gap Identification</h3>
-      <p>{{gapIdentification}}</p>
-
-      <h3>8.11 Content Beyond Syllabus</h3>
-      <p>{{contentBeyondSyllabus}}</p>
-
-      <div class="page-break"></div>
-
-      <h3>10. Lesson Plan</h3>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>S.No</th>
-            <th>Topic</th>
-            <th>Language</th>
-            <th>Reference</th>
-            <th>Date</th>
-            <th>Aid</th>
-          </tr>
-        </thead>
+      <table class="table syllabus-main-table">
         <tbody>
-          {{lessonPlanRows}}
+          <tr>
+            <td rowspan="3" class="syllabus-code">
+              <strong>{{course_code}}</strong>
+            </td>
+            <td rowspan="3" class="syllabus-title">
+              <strong>{{course_title}}</strong>
+            </td>
+            <td colspan="2" class="credit-label">CI</td>
+            <td colspan="2" class="credit-label">LI</td>
+            <td colspan="2" class="credit-label">NH</td>
+            <td rowspan="2" class="credit-box"><strong>TH</strong></td>
+            <td rowspan="2" class="credit-box"><strong>C</strong></td>
+          </tr>
+          <tr>
+            <td class="credit-box"><strong>L</strong></td>
+            <td class="credit-box"><strong>T</strong></td>
+            <td class="credit-box"><strong>P</strong></td>
+            <td class="credit-box"><strong>J</strong></td>
+            <td class="credit-box"><strong>TW</strong></td>
+            <td class="credit-box"><strong>SL</strong></td>
+          </tr>
+          <tr>
+            <td class="credit-box"><strong>{{credit_L}}</strong></td>
+            <td class="credit-box"><strong>{{credit_T}}</strong></td>
+            <td class="credit-box"><strong>{{credit_P}}</strong></td>
+            <td class="credit-box"><strong>{{credit_J}}</strong></td>
+            <td class="credit-box"><strong>{{credit_TW}}</strong></td>
+            <td class="credit-box"><strong>{{credit_SL}}</strong></td>
+            <td class="credit-box"><strong>{{credit_TH}}</strong></td>
+            <td class="credit-box"><strong>{{credit_C}}</strong></td>
+          </tr>
+          <tr>
+            <td colspan="10" class="unit-row">
+              <strong>3. Syllabus</strong>
+              <span style="float: right">
+                <strong>(30+30+60=120 Periods)</strong>
+              </span>
+            </td>
+          </tr>
+          {{syllabus_rows}}
         </tbody>
       </table>
 
-      <div class="footer">Page <span class="pageNumber"></span></div>
+      <p style="margin-bottom: 10px">
+        <strong>List of Experiments : (30 Periods)</strong>
+      </p>
+      <table class="table text-left experiments-table">
+        <tbody>
+          <tr>
+            <td>
+              <p class="main-point">
+                1. Environment Setup and Introduction to Tools
+              </p>
+              <p class="sub-point">
+                - Setting up IDEs such as IntelliJ IDEA, Eclipse, or Visual
+                Studio Code.
+              </p>
+              <p class="sub-point">
+                - Familiarization with UML tools such as Lucidchart, Draw.io,
+                Star UML.
+              </p>
+
+              <p class="main-point">
+                2. Document the Software Requirements Specification (SRS) for
+                the identified system
+              </p>
+              <p class="main-point">
+                3. Identify use cases and develop the Use Case model
+              </p>
+              <p class="sub-point">- Identify users</p>
+              <p class="sub-point">- Identify process</p>
+              <p class="sub-point">- Define constraints affecting the design</p>
+
+              <p class="main-point">
+                4. Identify conceptual classes and develop Domain Model and
+                Class Diagram
+              </p>
+              <p class="sub-point">- Define classes, attributes, operations</p>
+              <p class="sub-point">
+                - Identify association, aggregation, composition and
+                generalization
+              </p>
+              <p class="sub-point">- Incorporate inheritance and interfaces</p>
+              <p class="sub-point">- Identify object relationships</p>
+
+              <p class="main-point">5. Sequence and Collaboration Diagrams</p>
+              <p class="sub-point">
+                - Demonstrate synchronous, asynchronous and iterative behaviour
+              </p>
+              <p class="main-point">6. State Chart and Activity Diagrams</p>
+              <p class="main-point">7. Component Diagram Creation</p>
+              <p class="main-point">
+                8. Creating composite structure diagrams for complex system
+                elements
+              </p>
+              <p class="main-point">
+                9. Test the software system for all the scenarios identified as
+                per the use-case diagram
+              </p>
+
+              <p><strong>List of Sample Projects:</strong></p>
+              {{sample_projects}}
+            </td>
+          </tr>
+          {{dynamic_reference_rows}}
+        </tbody>
+      </table>
+
+      <p style="margin-bottom: 10px" class="inline">
+        <strong>8.10 Gap Identification (if any) :</strong>
+        {{gapIdentification}}
+      </p>
+      <p style="margin-bottom: 10px">
+        <strong>8.11 Content Beyond Syllabus (if any) :</strong>
+        {{contentBeyondSyllabus}}
+      </p>
+
+      <div class="page-break"></div>
+
+      <div class="assessment-container" style="margin-bottom: 10px">
+        <p>
+          <strong>
+            9. Course Assessment Plan (Theory cum practical and Project course):
+          </strong>
+        </p>
+        <table class="assessment-table">
+          <thead>
+            <tr>
+              <th rowspan="3" class="bg-gray">Course Type</th>
+              <th colspan="9" class="bg-gray">Internal Assessment Marks</th>
+              <th colspan="3" class="bg-gray">SEE Marks</th>
+              <th rowspan="3" class="bg-gray">Total Marks</th>
+            </tr>
+            <tr>
+              <th colspan="3" class="bg-gray">CI</th>
+              <th colspan="2" class="bg-gray">LI</th>
+              <th colspan="4" class="bg-gray">NH</th>
+              <th class="bg-gray">CI</th>
+              <th class="bg-gray">LI</th>
+              <th class="bg-gray">NH</th>
+            </tr>
+            <tr>
+              <th class="bg-gray">CIA-I</th>
+              <th class="bg-gray">CIA-II</th>
+              <th class="bg-gray">CIA-III</th>
+              <th class="bg-gray">P</th>
+              <th class="bg-gray">J</th>
+              <th class="bg-gray">TW PROJ</th>
+              <th class="bg-gray">TW A1</th>
+              <th class="bg-gray">TW A2</th>
+              <th class="bg-gray">TW A3</th>
+              <th class="bg-gray">T</th>
+              <th class="bg-gray">P</th>
+              <th class="bg-gray">J</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left">Course Code: {{course_code}}</td>
+              <td>60</td>
+              <td>60</td>
+              <td>80</td>
+              <td>100</td>
+              <td></td>
+              <td>100</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>100</td>
+              <td></td>
+              <td>100</td>
+              <td>600</td>
+            </tr>
+            <tr>
+              <td class="text-left">Reduced to</td>
+              <td>8</td>
+              <td>8</td>
+              <td>9</td>
+              <td>25</td>
+              <td colspan="2">15</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>25</td>
+              <td>-</td>
+              <td>10</td>
+              <td>100</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="lesson-plan-container">
+        <p style="margin-bottom: 10px">
+          <strong>10. Lesson Plan (Theory)</strong>
+        </p>
+        <table class="table lesson-plan-table">
+          <thead>
+            <tr>
+              <th>S. No.</th>
+              <th>CO</th>
+              <th>Topic</th>
+              <th>Learning Pedagogy Used</th>
+              <th>References</th>
+              <th>Planned Date of Lecture</th>
+              <th>Actual Date Delivered</th>
+            </tr>
+          </thead>
+          <tbody>{{lessonPlanRows}}</tbody>
+        </table>
+      </div>
+
+      <div class="lesson-plan-container">
+        <p style="margin-bottom: 10px">
+          <strong>10. Lesson Plan (Practical)</strong>
+        </p>
+        <table class="table lesson-plan-table">
+          <thead>
+            <tr>
+              <th style="width: 5%">S. No.</th>
+              <th style="width: 5%">CO</th>
+              <th style="width: 50%">Name of the Experiment</th>
+              <th style="width: 15%">Teaching Aids Used</th>
+              <th style="width: 12.5%">Planned Date(s)</th>
+              <th style="width: 12.5%">Actual Date(s)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>CO1</td>
+              <td class="text-left">
+                Environment Setup and Introduction to Tools Setting up IDEs such
+                as IntelliJ IDEA, Eclipse, or Visual Studio Code.
+              </td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>CO1</td>
+              <td class="text-left">
+                Document the Software Requirements Specification (SRS) for the
+                identified system
+              </td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tw-sl-container">
+        <p style="margin-bottom: 10px">
+          <strong>11. Term Work and Self Learning - Plan and Outcome:</strong>
+        </p>
+        <table class="tw-sl-table">
+          <thead>
+            <tr>
+              <th rowspan="2" style="width: 5%">Sl. No</th>
+              <th rowspan="2" style="width: 45%">
+                Name of activity / Problem Statement
+              </th>
+              <th rowspan="2" style="width: 10%">RBTL</th>
+              <th colspan="2">Mapping</th>
+            </tr>
+            <tr>
+              <th style="width: 15%">COs</th>
+              <th style="width: 25%">POs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td class="text-left">Project</td>
+              <td>K4 / K5</td>
+              <td>CO1 – CO5</td>
+              <td class="text-left">
+                PO1, PO2, PO3, PO4, PO5, PO6, PO8, PO9, PO10, PO12
+                <br />
+                PSO1, PSO2, PSO3
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="assessment-dates-container">
+        <p style="margin-bottom: 10px">
+          <strong>
+            12. Proposed Dates of Assessments (as per the Department Academic
+            Calendar):
+          </strong>
+        </p>
+        <table class="assessment-dates-table">
+          <thead>
+            <tr>
+              <th style="width: 8%">S. No</th>
+              <th style="width: 32%">Name of the Assessment*</th>
+              <th style="width: 20%">Proposed Date</th>
+              <th style="width: 15%">Actual Date</th>
+              <th style="width: 25%">Reason for change</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td class="text-left">CIA I</td>
+              <td>09.02.2026</td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td class="text-left">CIA II</td>
+              <td>03.03.2026</td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td class="text-left">CIA III</td>
+              <td>06.04.2026</td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td class="text-left">Project Review – 1</td>
+              <td>19.02.2026 & 20.03.2026</td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td class="text-left">Project Review – 2</td>
+              <td>26.03.2026 & 27.03.2026</td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="assessment-dates-container">
+        <p style="margin-bottom: 10px">
+          <strong>
+            12. Proposed Dates of Activities related to the course, if any (as
+            per the Department Academic Calendar):
+          </strong>
+        </p>
+        <table class="assessment-dates-table">
+          <thead>
+            <tr>
+              <th style="width: 8%">S. No</th>
+              <th style="width: 32%">Name of the Assessment*</th>
+              <th style="width: 20%">Proposed Date</th>
+              <th style="width: 15%">Actual Date</th>
+              <th style="width: 25%">Reason for change</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td class="text-left">Seminar</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td class="text-left">Geust Lecture</td>
+              <td>NA</td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td class="text-left">Workshop</td>
+              <td>NA</td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td class="text-left">Industrial Visit</td>
+              <td>NA</td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="signature-section">
+        <p>
+          <strong>Name and Signature of course Faculty Member with Date</strong>
+        </p>
+        <div class="sig-row">
+          <div class="sig-col">
+            <p>
+              <strong>1) Name:</strong>
+              _________________________
+            </p>
+          </div>
+          <div class="sig-col">
+            <p><strong>Signature with Date</strong></p>
+          </div>
+        </div>
+        <div class="sig-row">
+          <div class="sig-col">
+            <p><strong>Reviewed by</strong></p>
+            <p class="sig-space"></p>
+            <p><strong>Signature of Module Coordinator</strong></p>
+            <p><strong>Date:</strong></p>
+          </div>
+          <div class="sig-col">
+            <p><strong>Approved by</strong></p>
+            <p class="sig-space"></p>
+            <p><strong>Signature of Head of Dept.</strong></p>
+            <p><strong>Date:</strong></p>
+          </div>
+        </div>
+        <hr class="sig-divider" />
+        <div class="office-academics">
+          <p><strong>For use of Office of Academics:</strong></p>
+          <div class="sig-row">
+            <div class="sig-col"></div>
+            <div class="sig-col">
+              <p><strong>Dean (Academics)</strong></p>
+              <p><strong>Date:</strong></p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </body>
 </html>
