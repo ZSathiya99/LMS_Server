@@ -121,7 +121,7 @@ export const getCourseHTML = async (req, res) => {
               // Logic check: if your data uses PO0, you must change 'columns' or map it here
               const credit = coData[col]?.credit ?? 0;
               averages[col] += credit;
-              return `<td class="td">${credit === 0 ? '0' : credit}</td>`;
+              return `<td class="td">${credit === 0 ? '-' : credit}</td>`;
             })
             .join('');
 
@@ -138,7 +138,7 @@ export const getCourseHTML = async (req, res) => {
       const avgCells = columns
         .map((col) => {
           const avg = coCount === 0 ? 0 : averages[col] / coCount;
-          return `<td class="td"><strong>${Math.round(avg)}</strong></td>`;
+          return `<td class="td"><strong>${avg == 0 ? '-' : Math.round(avg)}</strong></td>`;
         })
         .join('');
 
