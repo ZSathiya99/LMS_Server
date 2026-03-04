@@ -26,6 +26,7 @@ import studentClassroomRoutes from "./routes/studentClassroomRoutes.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
 import coursePlanRoutes from "./routes/coursePlanRoutes.js";
 import generatePdfRoutes from "./routes/generatePdfRoutes.js";
+import adminFacultyRoutes from "./routes/adminFacultyRoutes.js";
 
 
 // Connect DB
@@ -68,6 +69,7 @@ app.use("/api", materialRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/course-plan", coursePlanRoutes);
 app.use("/api/course-pdf", generatePdfRoutes);
+app.use("/api/admin", adminFacultyRoutes);
 
 
 // access assets folder when downloading the pdf
