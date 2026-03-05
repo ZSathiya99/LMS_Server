@@ -46,16 +46,26 @@ export const getFacultySubjects = async (req, res) => {
     const { facultyId } = req.params;
 
     const subjects = await Course.find({ facultyId })
-      .populate("sectionId", "sectionName") // optional if section model exists
+      .populate("sectionId", "sectionName")
       .select("courseCode courseTitle year program sectionId");
 
-    const formattedSubjects = subjects.map((item) => ({
-      subjectCode: item.courseCode,
-      subject: item.courseTitle,
-      year: item.year,
-      department: item.program,
-      section: item.sectionId?.sectionName || item.sectionId
-    }));
+    const formattedSubjects = subjects.map((item) => {
+
+      let section = "";
+
+      if (item.sectionId?.sectionName) {
+        // convert "Section A" -> "A"
+        section = item.sectionId.sectionName.replace("Section ", "");
+      }
+
+      return {
+        subjectCode: item.courseCode,
+        subject: item.courseTitle,
+        year: item.year,
+        department: item.program,
+        section: section
+      };
+    });
 
     res.status(200).json({
       success: true,
