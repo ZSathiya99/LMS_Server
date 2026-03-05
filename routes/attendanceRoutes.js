@@ -2,7 +2,7 @@ import express from "express";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import {
   markAttendance,
-  getAttendanceStudents,getAttendanceByDate,markBulkAttendance,getAttendancePrint,downloadAttendanceExcel
+  getAttendanceStudents,getAttendanceByDate,markBulkAttendance,getAttendancePrint,downloadAttendanceExcel,getAttendanceBySubjectAndDate
 } from "../controllers/attendanceController.js";
 
 const router = express.Router();
@@ -13,6 +13,7 @@ router.get("/attendance/date", verifyToken, getAttendanceByDate);
 router.post("/attendance/bulk", verifyToken, markBulkAttendance);
 router.get("/attendance/print",verifyToken, getAttendancePrint);
 router.get("/attendance/download-excel",verifyToken, downloadAttendanceExcel);
+router.get("/attendance/subject-date", verifyToken, getAttendanceBySubjectAndDate);
 
 
 

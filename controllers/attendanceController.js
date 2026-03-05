@@ -127,7 +127,38 @@ export const getAttendanceByDate = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+// get only date filter
+export const getAttendanceBySubjectAndDate = async (req, res) => {
+  try {
+    const { subjectId, date } = req.query;
 
+    if (!subjectId || !date) {
+      return res.status(400).json({
+        message: "SubjectId and Date are required",
+      });
+    }
+
+    const formattedDate = new Date(date).toISOString().split("T")[0];
+
+    const attendance = await StudentAttendance.find({
+      subjectId,
+      date: formattedDate,
+    });
+
+    return res.status(200).json({
+      message: "Attendance fetched successfully",
+      count: attendance.length,
+      attendance,
+    });
+
+  } catch (error) {
+    console.error("Get Attendance Error:", error);
+
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 /* =========================================================
    GET — STUDENTS WITH STATUS
 ========================================================= */
@@ -169,7 +200,7 @@ export const getAttendanceStudents = async (req, res) => {
       _id: s._id,
       rollNumber: s.rollNumber,
       name: `${s.firstName} ${s.lastName}`,
-      status: statusMap[s._id.toString()] || "Absent",
+      status: statusMap[s._id.toString()] || "null",
     }));
 
     return res.status(200).json({
@@ -271,9 +302,9 @@ export const getAttendancePrint = async (req, res) => {
 
 export const downloadAttendanceExcel = async (req, res) => {
   try {
-    let { department, year, section, subjectId, date, hour } = req.query;
+    let { department, year, section, subjectId, date } = req.query;
 
-    if (!department || !year || !section || !subjectId || !date || !hour) {
+    if (!department || !year || !section || !subjectId || !date) {
       return res.status(400).json({
         message: "All query parameters are required",
       });
@@ -300,10 +331,10 @@ export const downloadAttendanceExcel = async (req, res) => {
 
     const formattedDate = new Date(date).toISOString().split("T")[0];
 
+    // ❌ Hour removed
     const attendanceRecords = await StudentAttendance.find({
       subjectId,
       date: formattedDate,
-      hour: hour.toString().trim(),
     });
 
     let statusMap = {};
@@ -316,6 +347,7 @@ export const downloadAttendanceExcel = async (req, res) => {
 
     const attendanceList = students.map((student, index) => {
       const status = statusMap[student._id.toString()] || "Absent";
+
       if (status === "Present") presentCount++;
       else absentCount++;
 
@@ -327,11 +359,9 @@ export const downloadAttendanceExcel = async (req, res) => {
       };
     });
 
-    // ✅ Create Excel Workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Attendance");
 
-    // Title
     worksheet.addRow(["Attendance Report"]).font = { bold: true };
 
     worksheet.addRow([]);
@@ -342,20 +372,17 @@ export const downloadAttendanceExcel = async (req, res) => {
     worksheet.addRow(["Subject", subject.subject]);
     worksheet.addRow(["Subject Code", subject.code]);
     worksheet.addRow(["Date", formattedDate]);
-    worksheet.addRow(["Hour", hour]);
     worksheet.addRow(["Total Students", students.length]);
     worksheet.addRow(["Present", presentCount]);
     worksheet.addRow(["Absent", absentCount]);
 
     worksheet.addRow([]);
 
-    // Table Header
     const headerRow = worksheet.addRow(["S.No", "Roll Number", "Name", "Status"]);
     headerRow.eachCell((cell) => {
       cell.font = { bold: true };
     });
 
-    // Attendance Data
     attendanceList.forEach((student) => {
       worksheet.addRow([
         student.sno,
@@ -365,16 +392,15 @@ export const downloadAttendanceExcel = async (req, res) => {
       ]);
     });
 
-    // Auto column width
     worksheet.columns.forEach((column) => {
       column.width = 20;
     });
 
-    // Set headers for download
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
+
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=Attendance_${formattedDate}.xlsx`
@@ -385,6 +411,7 @@ export const downloadAttendanceExcel = async (req, res) => {
 
   } catch (error) {
     console.error("Attendance Excel Error:", error);
+
     return res.status(500).json({
       message: "Server Error",
       error: error.message,
