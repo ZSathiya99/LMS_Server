@@ -29,23 +29,29 @@ const attendanceEditRequestSchema = new mongoose.Schema(
     index: true
   },
 
-  // ✅ Better to store Date type
+  // store as Date
   date: {
     type: Date,
     required: true,
     index: true
   },
 
-  // for backend filtering
-  hourNumber: {
-    type: Number,
+  // same format used in StudentAttendance
+  hour: {
+    type: String,
     required: true,
-    min: 1,
-    max: 8,
-    index: true
+    enum: [
+      "1stHour",
+      "2ndHour",
+      "3rdHour",
+      "4thHour",
+      "5thHour",
+      "6thHour",
+      "7thHour",
+      "8thHour"
+    ]
   },
 
-  // for UI display
   hourLabel: {
     type: String,
     required: true,
@@ -76,13 +82,11 @@ const attendanceEditRequestSchema = new mongoose.Schema(
     index: true
   },
 
-  // HOD who approved/rejected
   hodActionBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Faculty"
   },
 
-  // when HOD took action
   hodActionDate: {
     type: Date
   }
@@ -91,12 +95,10 @@ const attendanceEditRequestSchema = new mongoose.Schema(
 { timestamps: true }
 );
 
-/* =====================================================
-   Prevent duplicate pending requests
-===================================================== */
+/* Prevent duplicate pending requests */
 
 attendanceEditRequestSchema.index(
-  { studentId: 1, subjectId: 1, date: 1, hourNumber: 1, status: 1 },
+  { studentId: 1, subjectId: 1, date: 1, hour: 1, status: 1 },
   { unique: true, partialFilterExpression: { status: "Pending" } }
 );
 
