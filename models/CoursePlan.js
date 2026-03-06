@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
@@ -8,39 +8,39 @@ const { Schema } = mongoose;
 
 const mappingItemSchema = new Schema(
   {
-    justification: { type: String, trim: true, default: '' },
-    credit: { type: Number, default: 0 }
+    justification: { type: String, trim: true, default: "" },
+    credit: { type: Number, default: 0 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const courseOutcomeSchema = new Schema(
   {
     unit: { type: String, required: true, trim: true },
-    statement: { type: String, default: '', trim: true },
+    statement: { type: String, default: "", trim: true },
     rtbl: {
       type: String,
-      enum: ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'],
-      required: true
-    }
+      enum: ["K1", "K2", "K3", "K4", "K5", "K6"],
+      required: true,
+    },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const courseDetailsSchema = new Schema(
   {
     courseType: {
       type: String,
-      enum: ['T', 'TP', 'TPJ', 'P', 'PJ', 'I'],
-      required: true
+      enum: ["T", "TP", "TPJ", "P", "PJ", "I"],
+      required: true,
     },
     preRequisites: String,
     coRequisites: String,
     courseDescription: String,
     courseObjectives: String,
-    courseOutcomes: { type: [courseOutcomeSchema], default: [] }
+    courseOutcomes: { type: [courseOutcomeSchema], default: [] },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /* =========================
@@ -52,25 +52,25 @@ const theoryTopicSchema = new Schema(
     topicName: { type: String, required: true, trim: true },
     teachingLanguage: {
       type: String,
-      enum: ['English', 'Tamil'],
-      default: 'English'
+      enum: ["English", "Tamil"],
+      default: "English",
     },
     date: { type: String, required: true },
     hours: { type: Schema.Types.Mixed, required: true },
     teachingAid: { type: String, required: true, trim: true },
     referenceBook: { type: String, required: true, trim: true },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /* reusable unit block */
 const theoryUnitSchema = new Schema(
   {
-    title: { type: String, default: '' },
-    topics: { type: [theoryTopicSchema], default: [] }
+    title: { type: String, default: "" },
+    topics: { type: [theoryTopicSchema], default: [] },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const theoryPlannerSchema = new Schema(
@@ -80,9 +80,9 @@ const theoryPlannerSchema = new Schema(
     UNIT3: { type: theoryUnitSchema, default: () => ({}) },
     UNIT4: { type: theoryUnitSchema, default: () => ({}) },
     UNIT5: { type: theoryUnitSchema, default: () => ({}) },
-    OTHERS: { type: theoryUnitSchema, default: () => ({}) } // 🔥 NEW
+    OTHERS: { type: theoryUnitSchema, default: () => ({}) }, // 🔥 NEW
   },
-  { _id: false }
+  { _id: false },
 );
 
 /* =========================
@@ -105,9 +105,9 @@ const coPoSchema = new Schema(
     PO11: { type: mappingItemSchema, default: () => ({}) },
     PSO1: { type: mappingItemSchema, default: () => ({}) },
     PSO2: { type: mappingItemSchema, default: () => ({}) },
-    PSO3: { type: mappingItemSchema, default: () => ({}) }
+    PSO3: { type: mappingItemSchema, default: () => ({}) },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const coPoMappingSchema = new Schema(
@@ -116,9 +116,9 @@ const coPoMappingSchema = new Schema(
     CO2: { type: coPoSchema, default: () => ({}) },
     CO3: { type: coPoSchema, default: () => ({}) },
     CO4: { type: coPoSchema, default: () => ({}) },
-    CO5: { type: coPoSchema, default: () => ({}) }
+    CO5: { type: coPoSchema, default: () => ({}) },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /* =========================
@@ -129,64 +129,64 @@ const referencesSchema = new Schema(
   {
     textBooks: {
       type: [String],
-      default: []
+      default: [],
     },
 
     referenceBooks: {
       type: [String],
-      default: []
+      default: [],
     },
 
     journals: {
       type: [String],
-      default: []
+      default: [],
     },
 
     webResources: {
       type: [String],
-      default: []
+      default: [],
     },
 
     // 🔥 NEW
     moocCourses: [
       {
-        platform: { type: String, trim: true, default: '' },
-        courseName: { type: String, trim: true, default: '' },
-        _id: false
-      }
+        platform: { type: String, trim: true, default: "" },
+        courseName: { type: String, trim: true, default: "" },
+        _id: false,
+      },
     ],
 
     // 🔥 NEW
     projects: {
       type: [String],
-      default: []
+      default: [],
     },
 
     // 🔥 NEW
     termWork: {
       enabled: {
         type: Boolean,
-        default: false
+        default: false,
       },
       activity: {
         type: [String],
-        default: []
-      }
+        default: [],
+      },
     },
 
     // 🔥 NEW
     gapIdentification: {
       enabled: {
         type: Boolean,
-        default: false
+        default: false,
       },
       entry: {
         type: [String],
-        default: []
-      }
-    }
+        default: [],
+      },
+    },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /* =========================
@@ -195,7 +195,11 @@ const referencesSchema = new Schema(
 
 const coursePlanSchema = new Schema(
   {
-    sectionId: { type: String, required: true, trim: true },
+    sectionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Section",
+      required: true,
+    },
     subjectId: { type: String, required: true, trim: true },
 
     academicYear: String,
@@ -206,7 +210,7 @@ const coursePlanSchema = new Schema(
     year: Number,
     program: String,
 
-    facultyId: { type: Schema.Types.ObjectId, ref: 'Faculty', required: true },
+    facultyId: { type: Schema.Types.ObjectId, ref: "Faculty", required: true },
     facultyName: String,
     facultyDesignation: String,
     facultyDepartment: String,
@@ -215,12 +219,12 @@ const coursePlanSchema = new Schema(
     coPoMapping: { type: coPoMappingSchema, default: {} },
     references: { type: referencesSchema, default: {} },
 
-    theoryPlanner: { type: theoryPlannerSchema, default: {} }
+    theoryPlanner: { type: theoryPlannerSchema, default: {} },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 coursePlanSchema.index({ sectionId: 1, subjectId: 1 }, { unique: true });
 
 export default mongoose.models.CoursePlan ||
-  mongoose.model('CoursePlan', coursePlanSchema);
+  mongoose.model("CoursePlan", coursePlanSchema);

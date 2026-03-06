@@ -1,6 +1,9 @@
 // import Attendance from "../models/Attendance.js";
 import Course from "../models/CoursePlan.js";
 import TimeTable from "../models/Timetable.js";
+import CoursePlan from "../models/CoursePlan.js";
+import mongoose from "mongoose";
+import AdminAllocation from "../models/adminAllocationModel.js";
 
 
 /* =====================================
@@ -35,7 +38,6 @@ import TimeTable from "../models/Timetable.js";
 // };
 
 
-
 /* =====================================
    2. Faculty Subject List (Assigned by HOD)
 ===================================== */
@@ -45,27 +47,56 @@ export const getFacultySubjects = async (req, res) => {
 
     const { facultyId } = req.params;
 
-    const subjects = await Course.find({ facultyId })
-      .populate("sectionId", "sectionName")
-      .select("courseCode courseTitle year program sectionId");
+    if (!facultyId) {
+      return res.status(400).json({
+        success: false,
+        message: "FacultyId is required"
+      });
+    }
 
-    const formattedSubjects = subjects.map((item) => {
+    const subjects = await CoursePlan.find({
+      facultyId: new mongoose.Types.ObjectId(facultyId)
+    })
+      .select("courseCode courseTitle year program sectionId")
+      .lean();
+
+    const formattedSubjects = [];
+
+    for (const item of subjects) {
 
       let section = "";
 
-      if (item.sectionId?.sectionName) {
-        // convert "Section A" -> "A"
-        section = item.sectionId.sectionName.replace("Section ", "");
+      const allocation = await AdminAllocation.findOne({
+        "subjects.sections._id": item.sectionId
+      }).lean();
+
+      if (allocation) {
+
+        for (const sub of allocation.subjects) {
+
+          for (const sec of sub.sections) {
+
+            if (sec._id.toString() === item.sectionId.toString()) {
+              section = sec.sectionName.replace("Section ", "");
+              break;
+            }
+
+          }
+
+          if (section) break;
+        }
+
       }
 
-      return {
+      formattedSubjects.push({
         subjectCode: item.courseCode,
         subject: item.courseTitle,
         year: item.year,
         department: item.program,
-        section: section
-      };
-    });
+        section
+      });
+
+    }
 
     res.status(200).json({
       success: true,
@@ -74,6 +105,8 @@ export const getFacultySubjects = async (req, res) => {
     });
 
   } catch (error) {
+
+    console.error("Fetch Faculty Subjects Error:", error);
 
     res.status(500).json({
       success: false,
@@ -85,7 +118,6 @@ export const getFacultySubjects = async (req, res) => {
 };
 
 
-
 /* =====================================
    3. Faculty Timetable (Assigned by HOD)
 ===================================== */
@@ -95,9 +127,16 @@ export const getFacultyTimetable = async (req, res) => {
 
     const { facultyId } = req.params;
 
+    if (!facultyId) {
+      return res.status(400).json({
+        success: false,
+        message: "FacultyId is required"
+      });
+    }
+
     const timetable = await TimeTable.find({
       "days.slots.facultyId": facultyId
-    });
+    }).lean();
 
     res.status(200).json({
       success: true,
@@ -107,6 +146,8 @@ export const getFacultyTimetable = async (req, res) => {
     });
 
   } catch (error) {
+
+    console.error("Faculty Timetable Error:", error);
 
     res.status(500).json({
       success: false,
