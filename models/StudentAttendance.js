@@ -16,7 +16,7 @@ const studentAttendanceSchema = new mongoose.Schema(
       index: true,
     },
 
-    // ✅ Better to store Date type instead of String
+    // ✅ Store as Date
     date: {
       type: Date,
       required: true,
@@ -49,7 +49,14 @@ const studentAttendanceSchema = new mongoose.Schema(
       ref: "Faculty",
       required: true,
     },
+
+    // ⭐ NEW FIELD (for HOD approval)
+    editApproved: {
+      type: Boolean,
+      default: false,
+    },
   },
+
   {
     timestamps: true,
   }
