@@ -98,7 +98,7 @@ const attendanceEditRequestSchema = new mongoose.Schema(
 
 attendanceEditRequestSchema.index(
   { studentId: 1, subjectId: 1, date: 1, hour: 1, status: 1 },
-  { unique: true, partialFilterExpression: { status: "Pending" } },
+  { unique: true, partialFilterExpression: { status: "Pending" } }
 );
 
 export default mongoose.model(
