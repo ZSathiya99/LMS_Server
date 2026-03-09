@@ -470,6 +470,7 @@ export const downloadAttendanceExcel = async (req, res) => {
 ========================================================= */
 
 export const raiseAttendanceEditRequest = async (req, res) => {
+  console.log("Raise Edit Request Body:", req.body);
   try {
 
     const {
@@ -502,7 +503,7 @@ export const raiseAttendanceEditRequest = async (req, res) => {
 
     const formattedDate = new Date(date);
 
-    /* prevent duplicate request */
+    /* Check pending request for same student + hour */
 
     const existingRequest = await AttendanceEditRequest.findOne({
       studentId,
@@ -515,7 +516,7 @@ export const raiseAttendanceEditRequest = async (req, res) => {
     if (existingRequest) {
       return res.status(400).json({
         success: false,
-        message: "Edit request already pending for this student"
+        message: "Edit request already pending for this student in this hour"
       });
     }
 
@@ -541,6 +542,15 @@ export const raiseAttendanceEditRequest = async (req, res) => {
     });
 
   } catch (error) {
+
+    /* Handle duplicate index error */
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "A request for this student and hour is already pending"
+      });
+    }
 
     console.error("Raise Request Error:", error);
 

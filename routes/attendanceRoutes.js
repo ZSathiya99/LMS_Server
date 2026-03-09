@@ -39,12 +39,15 @@ router.get("/attendance/download-excel", verifyToken, downloadAttendanceExcel);
    ATTENDANCE EDIT REQUEST SYSTEM
 ========================================================= */
 
+
 // Staff → Raise edit request
 router.post(
   "/attendance/edit-request",
   verifyToken,
   raiseAttendanceEditRequest
 );
+console.log("into routes");
+
 
 // HOD → View requests
 router.get(
