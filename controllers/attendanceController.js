@@ -528,9 +528,6 @@ export const getAttendanceRequestSlots = async (req, res) => {
   try {
 
     const slots = await AttendanceEditRequest.aggregate([
-      {
-        $match: { status: "Pending" }
-      },
 
       {
         $lookup: {
