@@ -12,9 +12,9 @@ import {
 
   // ⭐ NEW APIs
   raiseAttendanceEditRequest,
-  getAttendanceEditRequests,
+  getAttendanceRequestSlots,
   approveAttendanceEdit,
-  rejectAttendanceEdit
+  rejectAttendanceEdit,getSlotAttendanceRequests
 
 } from "../controllers/attendanceController.js";
 
@@ -49,11 +49,17 @@ router.post(
 console.log("into routes");
 
 
-// HOD → View requests
+// HOD → View requests-slots
 router.get(
-  "/attendance/edit-requests",
+  "/attendance/request-slots",
   verifyToken,
-  getAttendanceEditRequests
+  getAttendanceRequestSlots
+);
+
+router.get(
+  "/attendance/request-slot-details",
+  verifyToken,
+  getSlotAttendanceRequests
 );
 
 // HOD → Approve request

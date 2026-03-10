@@ -564,22 +564,66 @@ export const raiseAttendanceEditRequest = async (req, res) => {
 
 
 /* =========================================================
-   HOD → VIEW REQUESTS
+   HOD → API — Get Request Slots (Card View)
 ========================================================= */
 
-export const getAttendanceEditRequests = async (req, res) => {
+export const getAttendanceRequestSlots = async (req, res) => {
   try {
 
-    const requests = await AttendanceEditRequest.find({
-      status: "Pending"
-    })
-      .populate("studentId", "firstName lastName rollNumber")
-      .populate("facultyId", "name");
+    const slots = await AttendanceEditRequest.aggregate([
+      {
+        $match: { status: "Pending" }
+      },
+
+      {
+        $lookup: {
+          from: "faculties",
+          localField: "facultyId",
+          foreignField: "_id",
+          as: "faculty"
+        }
+      },
+
+      { $unwind: "$faculty" },
+
+      {
+        $lookup: {
+          from: "subjects",
+          localField: "subjectId",
+          foreignField: "_id",
+          as: "subject"
+        }
+      },
+
+      { $unwind: "$subject" },
+
+      {
+        $group: {
+          _id: {
+            facultyId: "$facultyId",
+            subjectId: "$subjectId",
+            sectionId: "$sectionId",
+            date: "$date",
+            hour: "$hour"
+          },
+
+          facultyName: { $first: "$faculty.name" },
+          subjectName: { $first: "$subject.subject" },
+          courseCode: { $first: "$subject.code" },
+          hourLabel: { $first: "$hourLabel" },
+          date: { $first: "$date" },
+          totalRequests: { $sum: 1 }
+        }
+      },
+
+      { $sort: { date: -1 } }
+
+    ]);
 
     res.status(200).json({
       success: true,
-      count: requests.length,
-      data: requests
+      count: slots.length,
+      data: slots
     });
 
   } catch (error) {
@@ -592,6 +636,48 @@ export const getAttendanceEditRequests = async (req, res) => {
   }
 };
 
+// Get Students Inside Slot (Table View)
+export const getSlotAttendanceRequests = async (req, res) => {
+  try {
+
+    const { facultyId, subjectId, sectionId, date, hour } = req.query;
+
+    const requests = await AttendanceEditRequest.find({
+      facultyId,
+      subjectId,
+      sectionId,
+      date,
+      hour,
+      status: "Pending"
+    })
+      .populate("studentId", "firstName lastName rollNumber")
+      .sort({ createdAt: 1 });
+
+    const formatted = requests.map(r => ({
+      requestId: r._id,
+      studentName: `${r.studentId.firstName} ${r.studentId.lastName}`,
+      rollNumber: r.studentId.rollNumber,
+      currentStatus: r.currentStatus,
+      requestedStatus: r.requestedStatus,
+      hour: r.hour,
+      date: r.date
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formatted.length,
+      data: formatted
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+};
 
 /* =========================================================
    HOD → APPROVE EDIT REQUEST
@@ -606,9 +692,12 @@ export const approveAttendanceEdit = async (req, res) => {
 
     if (!request) {
       return res.status(404).json({
+        success: false,
         message: "Request not found"
       });
     }
+
+    /* update student attendance */
 
     const attendance = await StudentAttendance.findOneAndUpdate(
       {
@@ -624,7 +713,19 @@ export const approveAttendanceEdit = async (req, res) => {
       { new: true }
     );
 
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance record not found"
+      });
+    }
+
+    /* update request */
+
     request.status = "Approved";
+    request.hodActionBy = req.user.facultyId;
+    request.hodActionDate = new Date();
+
     await request.save();
 
     res.status(200).json({
@@ -643,7 +744,6 @@ export const approveAttendanceEdit = async (req, res) => {
   }
 };
 
-
 /* =========================================================
    HOD → REJECT REQUEST
 ========================================================= */
@@ -654,12 +754,22 @@ export const rejectAttendanceEdit = async (req, res) => {
 
     const { requestId } = req.params;
 
-    await AttendanceEditRequest.findByIdAndUpdate(
-      requestId,
-      { status: "Rejected" }
-    );
+    const request = await AttendanceEditRequest.findById(requestId);
 
-    res.json({
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found"
+      });
+    }
+
+    request.status = "Rejected";
+    request.hodActionBy = req.user.facultyId;
+    request.hodActionDate = new Date();
+
+    await request.save();
+
+    res.status(200).json({
       success: true,
       message: "Request rejected"
     });
