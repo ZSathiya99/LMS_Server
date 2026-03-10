@@ -11,7 +11,6 @@ import AttendanceEditRequest from "../models/AttendanceEditRequest.js";
 
 export const markAttendance = async (req, res) => {
   try {
-
     const { studentId, subjectId, date, hour, status } = req.body;
     const facultyId = req.user.facultyId;
 
@@ -25,14 +24,13 @@ export const markAttendance = async (req, res) => {
       studentId,
       subjectId,
       date: formattedDate,
-      hour
+      hour,
     });
 
     if (existing) {
-
       if (!existing.editApproved && req.user.role !== "HOD") {
         return res.status(400).json({
-          message: "Attendance locked. Raise edit request."
+          message: "Attendance locked. Raise edit request.",
         });
       }
 
@@ -44,7 +42,7 @@ export const markAttendance = async (req, res) => {
 
       return res.status(200).json({
         message: "Attendance updated successfully",
-        attendance: existing
+        attendance: existing,
       });
     }
 
@@ -55,27 +53,23 @@ export const markAttendance = async (req, res) => {
       hour,
       status,
       markedBy: facultyId,
-      editApproved: false
+      editApproved: false,
     });
 
     await attendance.save();
 
     return res.status(200).json({
       message: `Marked ${status} successfully`,
-      attendance
+      attendance,
     });
-
   } catch (error) {
-
     console.error("Mark Attendance Error:", error);
 
     return res.status(500).json({
-      message: error.message
+      message: error.message,
     });
-
   }
 };
-
 
 /* =========================================================
    POST — BULK ATTENDANCE
@@ -83,7 +77,6 @@ export const markAttendance = async (req, res) => {
 
 export const markBulkAttendance = async (req, res) => {
   try {
-
     const { subjectId, date, hour, records } = req.body;
     const facultyId = req.user.facultyId;
 
@@ -96,12 +89,12 @@ export const markBulkAttendance = async (req, res) => {
     const existingAttendance = await StudentAttendance.find({
       subjectId,
       date: formattedDate,
-      hour
+      hour,
     });
 
     if (existingAttendance.length > 0 && req.user.role !== "HOD") {
       return res.status(400).json({
-        message: "Attendance already marked. Only HOD can edit."
+        message: "Attendance already marked. Only HOD can edit.",
       });
     }
 
@@ -111,7 +104,7 @@ export const markBulkAttendance = async (req, res) => {
           studentId: rec.studentId,
           subjectId,
           date: formattedDate,
-          hour
+          hour,
         },
         update: {
           $set: {
@@ -121,31 +114,27 @@ export const markBulkAttendance = async (req, res) => {
             hour,
             status: rec.status,
             markedBy: facultyId,
-            editApproved: false
-          }
+            editApproved: false,
+          },
         },
-        upsert: true
-      }
+        upsert: true,
+      },
     }));
 
     await StudentAttendance.bulkWrite(bulkOps);
 
     return res.status(200).json({
       message: "Attendance saved successfully",
-      total: records.length
+      total: records.length,
     });
-
   } catch (error) {
-
     console.error("Bulk Attendance Error:", error);
 
     return res.status(500).json({
-      message: error.message
+      message: error.message,
     });
-
   }
 };
-
 
 /* =========================================================
    GET — DATE FILTER
@@ -153,7 +142,6 @@ export const markBulkAttendance = async (req, res) => {
 
 export const getAttendanceByDate = async (req, res) => {
   try {
-
     const { date } = req.query;
 
     if (!date) {
@@ -163,26 +151,22 @@ export const getAttendanceByDate = async (req, res) => {
     const formattedDate = new Date(date);
 
     const attendance = await StudentAttendance.find({
-      date: formattedDate
+      date: formattedDate,
     });
 
     return res.status(200).json({
       message: "Attendance fetched successfully",
       count: attendance.length,
-      attendance
+      attendance,
     });
-
   } catch (error) {
-
     console.error("Get Attendance Error:", error);
 
     return res.status(500).json({
-      message: error.message
+      message: error.message,
     });
-
   }
 };
-
 
 /* =========================================================
    GET — SUBJECT + DATE FILTER
@@ -190,12 +174,11 @@ export const getAttendanceByDate = async (req, res) => {
 
 export const getAttendanceBySubjectAndDate = async (req, res) => {
   try {
-
     const { subjectId, date } = req.query;
 
     if (!subjectId || !date) {
       return res.status(400).json({
-        message: "SubjectId and Date are required"
+        message: "SubjectId and Date are required",
       });
     }
 
@@ -203,26 +186,22 @@ export const getAttendanceBySubjectAndDate = async (req, res) => {
 
     const attendance = await StudentAttendance.find({
       subjectId,
-      date: formattedDate
+      date: formattedDate,
     });
 
     return res.status(200).json({
       message: "Attendance fetched successfully",
       count: attendance.length,
-      attendance
+      attendance,
     });
-
   } catch (error) {
-
     console.error("Get Attendance Error:", error);
 
     return res.status(500).json({
-      message: error.message
+      message: error.message,
     });
-
   }
 };
-
 
 /* =========================================================
    GET — STUDENTS WITH ATTENDANCE STATUS
@@ -230,12 +209,11 @@ export const getAttendanceBySubjectAndDate = async (req, res) => {
 
 export const getAttendanceStudents = async (req, res) => {
   try {
-
     let { department, year, section, subjectId, date, hour } = req.query;
 
     if (!department || !year || !section || !subjectId) {
       return res.status(400).json({
-        message: "Missing query parameters"
+        message: "Missing query parameters",
       });
     }
 
@@ -246,25 +224,24 @@ export const getAttendanceStudents = async (req, res) => {
     const students = await Student.find({
       department: { $regex: new RegExp(`^${department.trim()}$`, "i") },
       year: { $regex: new RegExp(year.trim(), "i") },
-      section: { $regex: new RegExp(`^${section.trim()}$`, "i") }
+      section: { $regex: new RegExp(`^${section.trim()}$`, "i") },
     }).sort({ rollNumber: 1 });
 
     let statusMap = {};
 
     if (date && hour) {
-
       const formattedDate = new Date(date);
 
       const attendance = await StudentAttendance.find({
         subjectId,
         date: formattedDate,
-        hour
+        hour,
       });
 
       attendance.forEach((a) => {
         statusMap[a.studentId.toString()] = {
           status: a.status,
-          editApproved: a.editApproved
+          editApproved: a.editApproved,
         };
       });
     }
@@ -274,25 +251,21 @@ export const getAttendanceStudents = async (req, res) => {
       rollNumber: s.rollNumber,
       name: `${s.firstName} ${s.lastName}`,
       status: statusMap[s._id]?.status || null,
-      editApproved: statusMap[s._id]?.editApproved || false
+      editApproved: statusMap[s._id]?.editApproved || false,
     }));
 
     return res.status(200).json({
       total: result.length,
-      students: result
+      students: result,
     });
-
   } catch (error) {
-
     console.error("Get Attendance Students Error:", error);
 
     return res.status(500).json({
-      message: error.message
+      message: error.message,
     });
-
   }
 };
-
 
 /* =========================================================
    GET — PRINT ATTENDANCE
@@ -300,12 +273,11 @@ export const getAttendanceStudents = async (req, res) => {
 
 export const getAttendancePrint = async (req, res) => {
   try {
-
     let { department, year, section, subjectId, date, hour } = req.query;
 
     if (!department || !year || !section || !subjectId || !date || !hour) {
       return res.status(400).json({
-        message: "All query parameters are required"
+        message: "All query parameters are required",
       });
     }
 
@@ -316,13 +288,13 @@ export const getAttendancePrint = async (req, res) => {
     const students = await Student.find({
       department,
       year,
-      section
+      section,
     }).sort({ rollNumber: 1 });
 
     const attendanceRecords = await StudentAttendance.find({
       subjectId,
       date: formattedDate,
-      hour
+      hour,
     });
 
     let statusMap = {};
@@ -335,7 +307,6 @@ export const getAttendancePrint = async (req, res) => {
     let absentCount = 0;
 
     const attendanceList = students.map((student, index) => {
-
       const status = statusMap[student._id.toString()] || "Absent";
 
       if (status === "Present") presentCount++;
@@ -345,7 +316,7 @@ export const getAttendancePrint = async (req, res) => {
         sno: index + 1,
         rollNumber: student.rollNumber,
         name: `${student.firstName} ${student.lastName}`,
-        status
+        status,
       };
     });
 
@@ -361,23 +332,19 @@ export const getAttendancePrint = async (req, res) => {
         hour,
         totalStudents: students.length,
         present: presentCount,
-        absent: absentCount
+        absent: absentCount,
       },
-      attendanceList
+      attendanceList,
     });
-
   } catch (error) {
-
     console.error("Attendance Print Error:", error);
 
     return res.status(500).json({
       message: "Server Error",
-      error: error.message
+      error: error.message,
     });
-
   }
 };
-
 
 /* =========================================================
    DOWNLOAD EXCEL
@@ -385,7 +352,6 @@ export const getAttendancePrint = async (req, res) => {
 
 export const downloadAttendanceExcel = async (req, res) => {
   try {
-
     let { department, year, section, subjectId, date } = req.query;
 
     const subject = await Subject.findById(subjectId);
@@ -393,14 +359,14 @@ export const downloadAttendanceExcel = async (req, res) => {
     const students = await Student.find({
       department,
       year,
-      section
+      section,
     }).sort({ rollNumber: 1 });
 
     const formattedDate = new Date(date);
 
     const attendanceRecords = await StudentAttendance.find({
       subjectId,
-      date: formattedDate
+      date: formattedDate,
     });
 
     let statusMap = {};
@@ -424,7 +390,7 @@ export const downloadAttendanceExcel = async (req, res) => {
       "S.No",
       "Roll Number",
       "Name",
-      "Status"
+      "Status",
     ]);
 
     headerRow.font = { bold: true };
@@ -434,7 +400,7 @@ export const downloadAttendanceExcel = async (req, res) => {
         index + 1,
         student.rollNumber,
         `${student.firstName} ${student.lastName}`,
-        statusMap[student._id.toString()] || "Absent"
+        statusMap[student._id.toString()] || "Absent",
       ]);
     });
 
@@ -442,28 +408,24 @@ export const downloadAttendanceExcel = async (req, res) => {
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=Attendance_${formattedDate}.xlsx`
+      `attachment; filename=Attendance_${formattedDate}.xlsx`,
     );
 
     await workbook.xlsx.write(res);
     res.end();
-
   } catch (error) {
-
     console.error("Excel Error:", error);
 
     res.status(500).json({
-      message: error.message
+      message: error.message,
     });
-
   }
 };
-
 
 /* =========================================================
    STAFF → RAISE EDIT REQUEST
@@ -472,7 +434,6 @@ export const downloadAttendanceExcel = async (req, res) => {
 export const raiseAttendanceEditRequest = async (req, res) => {
   console.log("Raise Edit Request Body:", req.body);
   try {
-
     const {
       subjectId,
       sectionId,
@@ -481,7 +442,7 @@ export const raiseAttendanceEditRequest = async (req, res) => {
       hour,
       hourLabel,
       currentStatus,
-      requestedStatus
+      requestedStatus,
     } = req.body;
 
     const facultyId = req.user.facultyId;
@@ -497,7 +458,7 @@ export const raiseAttendanceEditRequest = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Required fields missing"
+        message: "Required fields missing",
       });
     }
 
@@ -510,13 +471,13 @@ export const raiseAttendanceEditRequest = async (req, res) => {
       subjectId,
       date: formattedDate,
       hour,
-      status: "Pending"
+      status: "Pending",
     });
 
     if (existingRequest) {
       return res.status(400).json({
         success: false,
-        message: "Edit request already pending for this student in this hour"
+        message: "Edit request already pending for this student in this hour",
       });
     }
 
@@ -530,7 +491,7 @@ export const raiseAttendanceEditRequest = async (req, res) => {
       hourLabel,
       currentStatus,
       requestedStatus,
-      status: "Pending"
+      status: "Pending",
     });
 
     await request.save();
@@ -538,17 +499,15 @@ export const raiseAttendanceEditRequest = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Edit request sent to HOD",
-      data: request
+      data: request,
     });
-
   } catch (error) {
-
     /* Handle duplicate index error */
 
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: "A request for this student and hour is already pending"
+        message: "A request for this student and hour is already pending",
       });
     }
 
@@ -556,9 +515,8 @@ export const raiseAttendanceEditRequest = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
-
   }
 };
 
@@ -568,10 +526,9 @@ export const raiseAttendanceEditRequest = async (req, res) => {
 
 export const getAttendanceRequestSlots = async (req, res) => {
   try {
-
     const slots = await AttendanceEditRequest.aggregate([
       {
-        $match: { status: "Pending" }
+        $match: { status: "Pending" },
       },
 
       {
@@ -579,22 +536,32 @@ export const getAttendanceRequestSlots = async (req, res) => {
           from: "faculties",
           localField: "facultyId",
           foreignField: "_id",
-          as: "faculty"
-        }
+          as: "faculty",
+        },
       },
 
-      { $unwind: "$faculty" },
+      {
+        $unwind: {
+          path: "$faculty",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
 
       {
         $lookup: {
           from: "subjects",
           localField: "subjectId",
           foreignField: "_id",
-          as: "subject"
-        }
+          as: "subject",
+        },
       },
 
-      { $unwind: "$subject" },
+      {
+        $unwind: {
+          path: "$subject",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
 
       {
         $group: {
@@ -603,42 +570,47 @@ export const getAttendanceRequestSlots = async (req, res) => {
             subjectId: "$subjectId",
             sectionId: "$sectionId",
             date: "$date",
-            hour: "$hour"
+            hour: "$hour",
           },
 
-          facultyName: { $first: "$faculty.name" },
+          facultyName: {
+            $first: {
+              $concat: ["$faculty.firstName", " ", "$faculty.lastName"],
+            },
+          },
           subjectName: { $first: "$subject.subject" },
           courseCode: { $first: "$subject.code" },
           hourLabel: { $first: "$hourLabel" },
           date: { $first: "$date" },
-          totalRequests: { $sum: 1 }
-        }
+          totalRequests: { $sum: 1 },
+        },
       },
 
-      { $sort: { date: -1 } }
+      {
+        $addFields: {
+          facultyName: { $ifNull: ["$facultyName", "Unknown Faculty"] },
+        },
+      },
 
+      { $sort: { date: -1 } },
     ]);
 
     res.status(200).json({
       success: true,
       count: slots.length,
-      data: slots
+      data: slots,
     });
-
   } catch (error) {
-
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
-
   }
 };
 
 // Get Students Inside Slot (Table View)
 export const getSlotAttendanceRequests = async (req, res) => {
   try {
-
     const { facultyId, subjectId, sectionId, date, hour } = req.query;
 
     const requests = await AttendanceEditRequest.find({
@@ -647,34 +619,31 @@ export const getSlotAttendanceRequests = async (req, res) => {
       sectionId,
       date,
       hour,
-      status: "Pending"
+      status: "Pending",
     })
       .populate("studentId", "firstName lastName rollNumber")
       .sort({ createdAt: 1 });
 
-    const formatted = requests.map(r => ({
+    const formatted = requests.map((r) => ({
       requestId: r._id,
       studentName: `${r.studentId.firstName} ${r.studentId.lastName}`,
       rollNumber: r.studentId.rollNumber,
       currentStatus: r.currentStatus,
       requestedStatus: r.requestedStatus,
       hour: r.hour,
-      date: r.date
+      date: r.date,
     }));
 
     res.status(200).json({
       success: true,
       count: formatted.length,
-      data: formatted
+      data: formatted,
     });
-
   } catch (error) {
-
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
-
   }
 };
 
@@ -684,7 +653,6 @@ export const getSlotAttendanceRequests = async (req, res) => {
 
 export const approveAttendanceEdit = async (req, res) => {
   try {
-
     const { requestId } = req.params;
 
     const request = await AttendanceEditRequest.findById(requestId);
@@ -692,7 +660,7 @@ export const approveAttendanceEdit = async (req, res) => {
     if (!request) {
       return res.status(404).json({
         success: false,
-        message: "Request not found"
+        message: "Request not found",
       });
     }
 
@@ -703,19 +671,19 @@ export const approveAttendanceEdit = async (req, res) => {
         studentId: request.studentId,
         subjectId: request.subjectId,
         date: request.date,
-        hour: request.hour
+        hour: request.hour,
       },
       {
         status: request.requestedStatus,
-        editApproved: true
+        editApproved: true,
       },
-      { new: true }
+      { new: true },
     );
 
     if (!attendance) {
       return res.status(404).json({
         success: false,
-        message: "Attendance record not found"
+        message: "Attendance record not found",
       });
     }
 
@@ -730,16 +698,13 @@ export const approveAttendanceEdit = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Attendance updated successfully",
-      attendance
+      attendance,
     });
-
   } catch (error) {
-
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
-
   }
 };
 
@@ -748,9 +713,7 @@ export const approveAttendanceEdit = async (req, res) => {
 ========================================================= */
 
 export const rejectAttendanceEdit = async (req, res) => {
-
   try {
-
     const { requestId } = req.params;
 
     const request = await AttendanceEditRequest.findById(requestId);
@@ -758,7 +721,7 @@ export const rejectAttendanceEdit = async (req, res) => {
     if (!request) {
       return res.status(404).json({
         success: false,
-        message: "Request not found"
+        message: "Request not found",
       });
     }
 
@@ -770,16 +733,12 @@ export const rejectAttendanceEdit = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Request rejected"
+      message: "Request rejected",
     });
-
   } catch (error) {
-
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
-
   }
-
 };
