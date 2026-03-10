@@ -526,9 +526,10 @@ export const raiseAttendanceEditRequest = async (req, res) => {
 
 export const getAttendanceRequestSlots = async (req, res) => {
   try {
+
     const slots = await AttendanceEditRequest.aggregate([
       {
-        $match: { status: "Pending" },
+        $match: { status: "Pending" }
       },
 
       {
@@ -536,15 +537,15 @@ export const getAttendanceRequestSlots = async (req, res) => {
           from: "faculties",
           localField: "facultyId",
           foreignField: "_id",
-          as: "faculty",
-        },
+          as: "faculty"
+        }
       },
 
       {
         $unwind: {
           path: "$faculty",
-          preserveNullAndEmptyArrays: true,
-        },
+          preserveNullAndEmptyArrays: true
+        }
       },
 
       {
@@ -552,15 +553,15 @@ export const getAttendanceRequestSlots = async (req, res) => {
           from: "subjects",
           localField: "subjectId",
           foreignField: "_id",
-          as: "subject",
-        },
+          as: "subject"
+        }
       },
 
       {
         $unwind: {
           path: "$subject",
-          preserveNullAndEmptyArrays: true,
-        },
+          preserveNullAndEmptyArrays: true
+        }
       },
 
       {
@@ -570,44 +571,51 @@ export const getAttendanceRequestSlots = async (req, res) => {
             subjectId: "$subjectId",
             sectionId: "$sectionId",
             date: "$date",
-            hour: "$hour",
+            hour: "$hour"
           },
 
           facultyName: {
             $first: {
-              $concat: ["$faculty.firstName", " ", "$faculty.lastName"],
-            },
+              $concat: ["$faculty.firstName", " ", "$faculty.lastName"]
+            }
           },
+
           subjectName: { $first: "$subject.subject" },
           courseCode: { $first: "$subject.code" },
           hourLabel: { $first: "$hourLabel" },
           date: { $first: "$date" },
-          totalRequests: { $sum: 1 },
-        },
+
+          status: { $first: "$status" },
+
+          totalRequests: { $sum: 1 }
+        }
       },
 
       {
         $addFields: {
-          facultyName: { $ifNull: ["$facultyName", "Unknown Faculty"] },
-        },
+          facultyName: { $ifNull: ["$facultyName", "Unknown Faculty"] }
+        }
       },
 
-      { $sort: { date: -1 } },
+      { $sort: { date: -1 } }
+
     ]);
 
     res.status(200).json({
       success: true,
       count: slots.length,
-      data: slots,
+      data: slots
     });
+
   } catch (error) {
+
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message
     });
+
   }
 };
-
 // Get Students Inside Slot (Table View)
 export const getSlotAttendanceRequests = async (req, res) => {
   try {
@@ -740,5 +748,102 @@ export const rejectAttendanceEdit = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+
+// hod sumbit api
+export const submitAttendanceRequests = async (req, res) => {
+  try {
+
+    const requests = req.body;
+
+    if (!requests || !requests.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No requests received"
+      });
+    }
+
+    const results = [];
+
+    for (const item of requests) {
+
+      if (!item.clickedStatus || !item.requestId) continue;
+
+      const request = await AttendanceEditRequest.findById(item.requestId);
+
+      if (!request) continue;
+
+      /* ==========================
+         APPROVED
+      ========================== */
+
+      if (item.clickedStatus === "approved") {
+
+        const attendance = await StudentAttendance.findOneAndUpdate(
+          {
+            studentId: request.studentId,
+            subjectId: request.subjectId,
+            date: request.date,
+            hour: request.hour
+          },
+          {
+            status: request.requestedStatus,
+            editApproved: true
+          },
+          { new: true }
+        );
+
+        request.status = "Approved";
+        request.hodActionBy = req.user.facultyId;
+        request.hodActionDate = new Date();
+
+        await request.save();
+
+        results.push({
+          requestId: request._id,
+          action: "Approved",
+          attendanceUpdated: attendance ? true : false
+        });
+
+      }
+
+      /* ==========================
+         REJECTED
+      ========================== */
+
+      if (item.clickedStatus === "rejected") {
+
+        request.status = "Rejected";
+        request.hodActionBy = req.user.facultyId;
+        request.hodActionDate = new Date();
+
+        await request.save();
+
+        results.push({
+          requestId: request._id,
+          action: "Rejected"
+        });
+
+      }
+
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Requests processed successfully",
+      results
+    });
+
+  } catch (error) {
+
+    console.error("Submit Requests Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
   }
 };

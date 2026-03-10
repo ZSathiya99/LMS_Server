@@ -14,7 +14,7 @@ import {
   raiseAttendanceEditRequest,
   getAttendanceRequestSlots,
   approveAttendanceEdit,
-  rejectAttendanceEdit,getSlotAttendanceRequests
+  rejectAttendanceEdit,getSlotAttendanceRequests,submitAttendanceRequests
 
 } from "../controllers/attendanceController.js";
 
@@ -74,6 +74,12 @@ router.put(
   "/attendance/edit-request/:requestId/reject",
   verifyToken,
   rejectAttendanceEdit
+);
+
+router.post(
+  "/attendance/requests/submit",
+  verifyToken,
+  submitAttendanceRequests
 );
 
 export default router;
