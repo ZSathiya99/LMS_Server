@@ -582,15 +582,27 @@ export const getAttendanceRequestSlots = async (req, res) => {
           hourLabel: { $first: "$hourLabel" },
           date: { $first: "$date" },
 
-          status: { $first: "$status" },
+          totalRequests: { $sum: 1 },
 
-          totalRequests: { $sum: 1 }
+          pendingCount: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "Pending"] }, 1, 0]
+            }
+          }
         }
       },
 
       {
         $addFields: {
-          facultyName: { $ifNull: ["$facultyName", "Unknown Faculty"] }
+          facultyName: { $ifNull: ["$facultyName", "Unknown Faculty"] },
+
+          status: {
+            $cond: [
+              { $gt: ["$pendingCount", 0] },
+              "Pending",
+              "Completed"
+            ]
+          }
         }
       },
 
@@ -649,6 +661,58 @@ export const getSlotAttendanceRequests = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+// History of AttendanceEditRequest api:
+export const getAttendanceRequestHistory = async (req, res) => {
+  try {
+
+    const { facultyId, subjectId, sectionId, date, hour } = req.query;
+
+    if (!facultyId || !subjectId || !sectionId || !date || !hour) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing query parameters"
+      });
+    }
+
+    const requests = await AttendanceEditRequest.find({
+      facultyId,
+      subjectId,
+      sectionId,
+      date,
+      hour,
+      status: { $in: ["Approved", "Rejected"] }
+    })
+      .populate("studentId", "firstName lastName rollNumber")
+      .populate("facultyId", "firstName lastName")
+      .sort({ createdAt: 1 });
+
+    const formatted = requests.map(r => ({
+      requestId: r._id,
+      studentName: `${r.studentId.firstName} ${r.studentId.lastName}`,
+      rollNumber: r.studentId.rollNumber,
+      currentStatus: r.currentStatus,
+      requestedStatus: r.requestedStatus,
+      finalStatus: r.status,
+      hour: r.hour,
+      date: r.date
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formatted.length,
+      data: formatted
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
   }
 };
 

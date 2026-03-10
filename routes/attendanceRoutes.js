@@ -14,8 +14,7 @@ import {
   raiseAttendanceEditRequest,
   getAttendanceRequestSlots,
   approveAttendanceEdit,
-  rejectAttendanceEdit,getSlotAttendanceRequests,submitAttendanceRequests
-
+  rejectAttendanceEdit,getSlotAttendanceRequests,submitAttendanceRequests,getAttendanceRequestHistory
 } from "../controllers/attendanceController.js";
 
 const router = express.Router();
@@ -80,6 +79,11 @@ router.post(
   "/attendance/requests/submit",
   verifyToken,
   submitAttendanceRequests
+);
+router.get(
+  "/attendance/request-history",
+  verifyToken,
+  getAttendanceRequestHistory
 );
 
 export default router;
