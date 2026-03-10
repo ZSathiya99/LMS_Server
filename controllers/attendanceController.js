@@ -562,7 +562,6 @@ export const raiseAttendanceEditRequest = async (req, res) => {
   }
 };
 
-
 /* =========================================================
    HOD → API — Get Request Slots (Card View)
 ========================================================= */
