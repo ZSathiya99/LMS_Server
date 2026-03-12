@@ -15,6 +15,7 @@ export const createAssignment = async (req, res) => {
       link,
       youtubeLink,
       dueDate,
+      questions,
       marks
     } = req.body;
 
@@ -58,6 +59,7 @@ export const createAssignment = async (req, res) => {
       youtubeLink: youtubeLink || '',
       dueDate,
       marks: Number(marks),
+      questions: questions || '',
       comments: [],
       submissions: []
     });

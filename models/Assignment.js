@@ -91,6 +91,12 @@ const assignmentSchema = new mongoose.Schema(
       required: true
     },
 
+    questions: {
+      type: String,
+      default: '',
+      trim: true
+    },
+
     dueDate: {
       type: Date,
       required: true
