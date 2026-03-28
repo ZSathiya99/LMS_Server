@@ -1,6 +1,8 @@
 import Stream from '../models/Stream.js';
 import mongoose from 'mongoose';
 import AdminAllocation from '../models/adminAllocationModel.js';
+import Student from "../models/Student.js";
+import ClassroomMember from "../models/ClassroomMembers.js";
 import fs from 'fs';
 import path from 'path';
 
@@ -377,5 +379,95 @@ export const deleteCommentFromStream = async (req, res) => {
   } catch (error) {
     console.error('Delete Comment Error:', error);
     return res.status(500).json({ message: error.message });
+  }
+};
+//FINAL GET API (Student Stream)
+export const getStudentStream = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const userRole = req.user.role;
+
+    // 1️⃣ Only student
+    if (userRole !== "student") {
+      return res.status(403).json({
+        message: "Access denied. Only students allowed",
+      });
+    }
+
+    // 2️⃣ Get student
+    const student = await Student.findOne({ email: userEmail }).lean();
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    // 3️⃣ Get all joined classrooms
+    const memberships = await ClassroomMember.find({
+      userId: student._id,
+      role: "student",
+    }).lean();
+
+    if (!memberships.length) {
+      return res.status(404).json({
+        message: "No classrooms joined",
+      });
+    }
+
+    const sectionIds = memberships.map((m) => m.sectionId);
+
+    // 4️⃣ Get stream posts for those sections
+    const streams = await Stream.find({
+      sectionId: { $in: sectionIds },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 5️⃣ Attach subject + staff info
+    const results = [];
+
+    for (const post of streams) {
+      const allocation = await AdminAllocation.findOne({
+        "subjects.sections._id": post.sectionId,
+      }).lean();
+
+      if (!allocation) continue;
+
+      for (const sub of allocation.subjects) {
+        const section = sub.sections.find(
+          (s) => s._id.toString() === post.sectionId.toString()
+        );
+
+        if (section) {
+          results.push({
+            _id: post._id,
+            message: post.message,
+            attachments: post.attachments,
+            link: post.link,
+            youtubeLink: post.youtubeLink,
+            createdAt: post.createdAt,
+
+            subject: sub.subject,
+            section: section.sectionName,
+
+            // ✅ staff from your existing object
+            staffName: section.staff?.name || "",
+          });
+
+          break;
+        }
+      }
+    }
+
+    res.json({
+      totalPosts: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Student Stream Error:", error);
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

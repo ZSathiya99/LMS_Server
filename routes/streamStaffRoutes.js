@@ -7,7 +7,7 @@ import {
   deleteStreamPost,
   updateStreamPost,
   addCommentToStream,
-  deleteCommentFromStream
+  deleteCommentFromStream,getStudentStream
 } from '../controllers/streamController.js';
 import { uploadDocuments } from '../middleware/upload.js'; // ✅ FIXED
 
@@ -53,5 +53,6 @@ router.delete(
   verifyToken,
   deleteCommentFromStream
 );
+router.get("/student/stream", verifyToken, getStudentStream);
 
 export default router;

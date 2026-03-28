@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import Assignment from '../models/Assignment.js';
 import ClassroomMembers from '../models/ClassroomMembers.js';
+import Student from "../models/Student.js";
+import AdminAllocation from '../models/adminAllocationModel.js';
+
 
 /* =====================================================
    CREATE ASSIGNMENT
@@ -358,5 +361,101 @@ export const gradeSubmission = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+
+//GET API (Student Assignment)
+
+
+export const getStudentAssignments = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const userRole = req.user.role;
+
+    // 1️⃣ Only student
+    if (userRole !== "student") {
+      return res.status(403).json({
+        message: "Access denied. Only students allowed",
+      });
+    }
+
+    // 2️⃣ Get student
+    const student = await Student.findOne({ email: userEmail }).lean();
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    // 3️⃣ Get joined classrooms
+    const memberships = await ClassroomMembers.find({
+      userId: student._id,
+      role: "student",
+    }).lean();
+
+    if (!memberships.length) {
+      return res.status(404).json({
+        message: "No classrooms joined",
+      });
+    }
+
+    const sectionIds = memberships.map((m) => m.sectionId);
+
+    // 4️⃣ Get assignments
+    const assignments = await Assignment.find({
+      sectionId: { $in: sectionIds },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const results = [];
+
+    // 5️⃣ Attach subject + section + staff
+    for (const a of assignments) {
+      const allocation = await AdminAllocation.findOne({
+        "subjects.sections._id": a.sectionId,
+      }).lean();
+
+      if (!allocation) continue;
+
+      for (const sub of allocation.subjects) {
+        const section = sub.sections.find(
+          (s) => s._id.toString() === a.sectionId.toString()
+        );
+
+        if (section) {
+          results.push({
+            _id: a._id,
+            title: a.title,
+            instruction: a.instruction,
+            attachments: a.attachments,
+            link: a.link,
+            youtubeLink: a.youtubeLink,
+            dueDate: a.dueDate,
+            marks: a.marks,
+            questions: a.questions,
+
+            subject: sub.subject,
+            section: section.sectionName,
+
+            // ✅ your current DB format
+            staffName: section.staff?.name || "",
+          });
+
+          break;
+        }
+      }
+    }
+
+    res.json({
+      totalAssignments: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Student Assignment Error:", error);
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

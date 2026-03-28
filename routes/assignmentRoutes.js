@@ -10,9 +10,10 @@ import {
   deleteAssignment,
   addAssignmentComment,
   submitAssignment,
-  gradeSubmission
+  gradeSubmission,getStudentAssignments
   // getAssignmentDetails,
 } from '../controllers/assignmentController.js';
+import Student from '../models/Student.js';
 
 const router = express.Router();
 
@@ -85,4 +86,7 @@ router.put(
 //   getAssignmentDetails
 // );
 
+
+//Student get api
+router.get("/student/assignments", verifyToken, getStudentAssignments);
 export default router;
