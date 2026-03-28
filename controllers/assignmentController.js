@@ -372,6 +372,8 @@ export const getStudentAssignments = async (req, res) => {
     const userEmail = req.user.email;
     const userRole = req.user.role;
 
+    const { subjectId, sectionId } = req.params;
+
     // 1️⃣ Only student
     if (userRole !== "student") {
       return res.status(403).json({
@@ -379,7 +381,17 @@ export const getStudentAssignments = async (req, res) => {
       });
     }
 
-    // 2️⃣ Get student
+    // 2️⃣ Validate IDs
+    if (
+      !mongoose.Types.ObjectId.isValid(subjectId) ||
+      !mongoose.Types.ObjectId.isValid(sectionId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid subjectId or sectionId",
+      });
+    }
+
+    // 3️⃣ Get student
     const student = await Student.findOne({ email: userEmail }).lean();
 
     if (!student) {
@@ -388,65 +400,73 @@ export const getStudentAssignments = async (req, res) => {
       });
     }
 
-    // 3️⃣ Get joined classrooms
-    const memberships = await ClassroomMembers.find({
+    // 4️⃣ Security check (student belongs to section)
+    const membership = await ClassroomMembers.findOne({
       userId: student._id,
+      sectionId: sectionId,
       role: "student",
-    }).lean();
+    });
 
-    if (!memberships.length) {
-      return res.status(404).json({
-        message: "No classrooms joined",
+    if (!membership) {
+      return res.status(403).json({
+        message: "You are not assigned to this section",
       });
     }
 
-    const sectionIds = memberships.map((m) => m.sectionId);
-
-    // 4️⃣ Get assignments
+    // 5️⃣ Get assignments (FILTERED 🔥)
     const assignments = await Assignment.find({
-      sectionId: { $in: sectionIds },
+      subjectId,
+      sectionId,
     })
       .sort({ createdAt: -1 })
       .lean();
 
-    const results = [];
+    // 6️⃣ Get subject + section + staff
+    const allocation = await AdminAllocation.findOne({
+      "subjects.sections._id": sectionId,
+    }).lean();
 
-    // 5️⃣ Attach subject + section + staff
-    for (const a of assignments) {
-      const allocation = await AdminAllocation.findOne({
-        "subjects.sections._id": a.sectionId,
-      }).lean();
+    let subjectName = "";
+    let sectionName = "";
+    let staffName = "";
 
-      if (!allocation) continue;
-
+    if (allocation) {
       for (const sub of allocation.subjects) {
-        const section = sub.sections.find(
-          (s) => s._id.toString() === a.sectionId.toString()
-        );
+        if (sub.subjectId.toString() === subjectId.toString()) {
+          const section = sub.sections.find(
+            (s) => s._id.toString() === sectionId.toString()
+          );
 
-        if (section) {
-          results.push({
-            _id: a._id,
-            title: a.title,
-            instruction: a.instruction,
-            attachments: a.attachments,
-            link: a.link,
-            youtubeLink: a.youtubeLink,
-            dueDate: a.dueDate,
-            marks: a.marks,
-            questions: a.questions,
-
-            subject: sub.subject,
-            section: section.sectionName,
-
-            // ✅ your current DB format
-            staffName: section.staff?.name || "",
-          });
-
-          break;
+          if (section) {
+            subjectName = sub.subject;
+            sectionName = section.sectionName;
+            staffName = section.staff?.name || "";
+            break;
+          }
         }
       }
     }
+
+    // 7️⃣ Format response
+    const results = assignments.map((a) => ({
+      _id: a._id,
+
+      subjectId: a.subjectId,
+      sectionId: a.sectionId,
+
+      title: a.title,
+      instruction: a.instruction,
+      attachments: a.attachments,
+      link: a.link,
+      youtubeLink: a.youtubeLink,
+      dueDate: a.dueDate,
+      marks: a.marks,
+      questions: a.questions,
+
+      subject: subjectName,
+      section: sectionName,
+      staffName: staffName,
+    }));
 
     res.json({
       totalAssignments: results.length,

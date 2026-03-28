@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import Question from '../models/Question.js';
 import ClassroomMembers from '../models/ClassroomMembers.js';
+import AdminAllocation from '../models/adminAllocationModel.js';
+import Student from '../models/Student.js';
 
 /* ======================================================
    CREATE QUESTION
@@ -294,5 +296,119 @@ export const submitQuestion = async (req, res) => {
     res.json({ message: 'Submitted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+//FINAL GET API (Student Questions)
+export const getStudentQuestions = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const userRole = req.user.role;
+
+    const { subjectId, sectionId } = req.params;
+
+    // 1️⃣ Only student
+    if (userRole !== "student") {
+      return res.status(403).json({
+        message: "Access denied. Only students allowed",
+      });
+    }
+
+    // 2️⃣ Validate IDs
+    if (
+      !mongoose.Types.ObjectId.isValid(subjectId) ||
+      !mongoose.Types.ObjectId.isValid(sectionId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid subjectId or sectionId",
+      });
+    }
+
+    // 3️⃣ Get student
+    const student = await Student.findOne({ email: userEmail }).lean();
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    // 4️⃣ Check student belongs to this section (SECURITY 🔐)
+    const membership = await ClassroomMembers.findOne({
+      userId: student._id,
+      sectionId: sectionId,
+      role: "student",
+    });
+
+    if (!membership) {
+      return res.status(403).json({
+        message: "You are not assigned to this section",
+      });
+    }
+
+    // 5️⃣ Get questions (FILTERED 🔥)
+    const questions = await Question.find({
+      subjectId,
+      sectionId,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 6️⃣ Get subject + section + staff
+    const allocation = await AdminAllocation.findOne({
+      "subjects.sections._id": sectionId,
+    }).lean();
+
+    let subjectName = "";
+    let sectionName = "";
+    let staffName = "";
+
+    if (allocation) {
+      for (const sub of allocation.subjects) {
+        if (sub.subjectId.toString() === subjectId.toString()) {
+          const section = sub.sections.find(
+            (s) => s._id.toString() === sectionId.toString()
+          );
+
+          if (section) {
+            subjectName = sub.subject;
+            sectionName = section.sectionName;
+            staffName = section.staff?.name || "";
+            break;
+          }
+        }
+      }
+    }
+
+    // 7️⃣ Format response
+    const results = questions.map((q) => ({
+      _id: q._id,
+
+      subjectId: q.subjectId,
+      sectionId: q.sectionId,
+
+      title: q.title,
+      questionType: q.questionType,
+      instruction: q.instruction,
+      attachments: q.attachments,
+      options: q.options,
+      link: q.link,
+      youtubeLink: q.youtubeLink,
+      marks: q.marks,
+      dueDate: q.dueDate,
+
+      subject: subjectName,
+      section: sectionName,
+      staffName: staffName,
+    }));
+
+    res.json({
+      totalQuestions: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Student Question Error:", error);
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

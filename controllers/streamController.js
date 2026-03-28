@@ -387,6 +387,8 @@ export const getStudentStream = async (req, res) => {
     const userEmail = req.user.email;
     const userRole = req.user.role;
 
+    const { subjectId, sectionId } = req.params;
+
     // 1️⃣ Only student
     if (userRole !== "student") {
       return res.status(403).json({
@@ -394,7 +396,17 @@ export const getStudentStream = async (req, res) => {
       });
     }
 
-    // 2️⃣ Get student
+    // 2️⃣ Validate IDs
+    if (
+      !mongoose.Types.ObjectId.isValid(subjectId) ||
+      !mongoose.Types.ObjectId.isValid(sectionId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid subjectId or sectionId",
+      });
+    }
+
+    // 3️⃣ Get student
     const student = await Student.findOne({ email: userEmail }).lean();
 
     if (!student) {
@@ -403,62 +415,70 @@ export const getStudentStream = async (req, res) => {
       });
     }
 
-    // 3️⃣ Get all joined classrooms
-    const memberships = await ClassroomMember.find({
+    // 4️⃣ Security check (student belongs to section)
+    const membership = await ClassroomMember.findOne({
       userId: student._id,
+      sectionId: sectionId,
       role: "student",
-    }).lean();
+    });
 
-    if (!memberships.length) {
-      return res.status(404).json({
-        message: "No classrooms joined",
+    if (!membership) {
+      return res.status(403).json({
+        message: "You are not assigned to this section",
       });
     }
 
-    const sectionIds = memberships.map((m) => m.sectionId);
-
-    // 4️⃣ Get stream posts for those sections
+    // 5️⃣ Get stream posts (FILTERED 🔥)
     const streams = await Stream.find({
-      sectionId: { $in: sectionIds },
+      subjectId,
+      sectionId,
     })
       .sort({ createdAt: -1 })
       .lean();
 
-    // 5️⃣ Attach subject + staff info
-    const results = [];
+    // 6️⃣ Get subject + section + staff
+    const allocation = await AdminAllocation.findOne({
+      "subjects.sections._id": sectionId,
+    }).lean();
 
-    for (const post of streams) {
-      const allocation = await AdminAllocation.findOne({
-        "subjects.sections._id": post.sectionId,
-      }).lean();
+    let subjectName = "";
+    let sectionName = "";
+    let staffName = "";
 
-      if (!allocation) continue;
-
+    if (allocation) {
       for (const sub of allocation.subjects) {
-        const section = sub.sections.find(
-          (s) => s._id.toString() === post.sectionId.toString()
-        );
+        if (sub.subjectId.toString() === subjectId.toString()) {
+          const section = sub.sections.find(
+            (s) => s._id.toString() === sectionId.toString()
+          );
 
-        if (section) {
-          results.push({
-            _id: post._id,
-            message: post.message,
-            attachments: post.attachments,
-            link: post.link,
-            youtubeLink: post.youtubeLink,
-            createdAt: post.createdAt,
-
-            subject: sub.subject,
-            section: section.sectionName,
-
-            // ✅ staff from your existing object
-            staffName: section.staff?.name || "",
-          });
-
-          break;
+          if (section) {
+            subjectName = sub.subject;
+            sectionName = section.sectionName;
+            staffName = section.staff?.name || "";
+            break;
+          }
         }
       }
     }
+
+    // 7️⃣ Format response
+    const results = streams.map((post) => ({
+      _id: post._id,
+
+      subjectId: post.subjectId,
+      sectionId: post.sectionId,
+
+      message: post.message,
+      attachments: post.attachments,
+      link: post.link,
+      youtubeLink: post.youtubeLink,
+      createdAt: post.createdAt,
+
+      subject: subjectName,
+      section: sectionName,
+      staffName: staffName,
+    }));
 
     res.json({
       totalPosts: results.length,

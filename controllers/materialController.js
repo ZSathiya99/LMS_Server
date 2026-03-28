@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
 import Material from '../models/Material.js';
+import ClassroomMembers from '../models/ClassroomMembers.js';
+import AdminAllocation from '../models/adminAllocationModel.js';
+import Student from "../models/Student.js";
 
 /* =====================================================
    CREATE MATERIAL
@@ -268,5 +271,117 @@ export const deleteMaterialComment = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+
+//FULL GET API (Student Materials)
+export const getStudentMaterials = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const userRole = req.user.role;
+
+    const { subjectId, sectionId } = req.params;
+
+    // 1️⃣ Only student
+    if (userRole !== "student") {
+      return res.status(403).json({
+        message: "Access denied. Only students allowed",
+      });
+    }
+
+    // 2️⃣ Validate IDs
+    if (
+      !mongoose.Types.ObjectId.isValid(subjectId) ||
+      !mongoose.Types.ObjectId.isValid(sectionId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid subjectId or sectionId",
+      });
+    }
+
+    // 3️⃣ Get student
+    const student = await Student.findOne({ email: userEmail }).lean();
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    // 4️⃣ Security check (student belongs to section)
+    const membership = await ClassroomMembers.findOne({
+      userId: student._id,
+      sectionId: sectionId,
+      role: "student",
+    });
+
+    if (!membership) {
+      return res.status(403).json({
+        message: "You are not assigned to this section",
+      });
+    }
+
+    // 5️⃣ Get materials (FILTERED 🔥)
+    const materials = await Material.find({
+      subjectId,
+      sectionId,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 6️⃣ Get subject + section + staff
+    const allocation = await AdminAllocation.findOne({
+      "subjects.sections._id": sectionId,
+    }).lean();
+
+    let subjectName = "";
+    let sectionName = "";
+    let staffName = "";
+
+    if (allocation) {
+      for (const sub of allocation.subjects) {
+        if (sub.subjectId.toString() === subjectId.toString()) {
+          const section = sub.sections.find(
+            (s) => s._id.toString() === sectionId.toString()
+          );
+
+          if (section) {
+            subjectName = sub.subject;
+            sectionName = section.sectionName;
+            staffName = section.staff?.name || "";
+            break;
+          }
+        }
+      }
+    }
+
+    // 7️⃣ Format response
+    const results = materials.map((m) => ({
+      _id: m._id,
+
+      subjectId: m.subjectId,
+      sectionId: m.sectionId,
+
+      title: m.title,
+      instruction: m.instruction,
+      attachments: m.attachments,
+      link: m.link,
+      youtubeLink: m.youtubeLink,
+      createdAt: m.createdAt,
+
+      subject: subjectName,
+      section: sectionName,
+      staffName: staffName,
+    }));
+
+    res.json({
+      totalMaterials: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Student Material Error:", error);
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

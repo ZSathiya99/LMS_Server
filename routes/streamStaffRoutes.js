@@ -53,6 +53,10 @@ router.delete(
   verifyToken,
   deleteCommentFromStream
 );
-router.get("/student/stream", verifyToken, getStudentStream);
+router.get(
+  "/student/stream/:subjectId/:sectionId",
+  verifyToken,
+  getStudentStream
+);
 
 export default router;

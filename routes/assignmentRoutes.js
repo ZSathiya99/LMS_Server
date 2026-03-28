@@ -88,5 +88,9 @@ router.put(
 
 
 //Student get api
-router.get("/student/assignments", verifyToken, getStudentAssignments);
+router.get(
+  "/student/assignments/:subjectId/:sectionId",
+  verifyToken,
+  getStudentAssignments
+);
 export default router;

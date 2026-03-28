@@ -524,24 +524,31 @@ export const getStudentClassroom = async (req, res) => {
     for (const m of memberships) {
       const sectionId = m.sectionId;
 
+      // 5️⃣ Find allocation
       const allocation = await AdminAllocation.findOne({
         "subjects.sections._id": sectionId,
       }).lean();
 
       if (!allocation) continue;
 
+      // 6️⃣ Find subject + section
       for (const sub of allocation.subjects) {
         const section = sub.sections.find(
           (s) => s._id.toString() === sectionId.toString()
         );
 
         if (section) {
-          // ✅ FIX: Directly use stored staff object
+          // ✅ Use stored staff object
           const staffName = section.staff?.name || "";
 
           results.push({
             studentName: `${student.firstName} ${student.lastName}`,
             year: student.year,
+
+            // 🔥 REQUIRED FIELDS
+            subjectId: sub.subjectId?.toString(),
+            sectionId: section._id?.toString(),
+
             subject: sub.subject,
             section: section.sectionName,
             staffName: staffName,

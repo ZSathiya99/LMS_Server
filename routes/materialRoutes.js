@@ -10,7 +10,7 @@ import {
   deleteMaterial,
   addMaterialComment,
   editMaterialComment,
-  deleteMaterialComment
+  deleteMaterialComment,getStudentMaterials
 } from '../controllers/materialController.js';
 
 const router = express.Router();
@@ -63,5 +63,9 @@ router.delete(
   verifyToken,
   deleteMaterialComment
 );
-
+router.get(
+  "/student/materials/:subjectId/:sectionId",
+  verifyToken,
+  getStudentMaterials
+);
 export default router;

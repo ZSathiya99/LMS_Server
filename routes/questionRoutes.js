@@ -7,7 +7,7 @@ import {
   getQuestionsData,
   addQuestionComment,
   deleteQuestionComment,
-  submitQuestion
+  submitQuestion,getStudentQuestions
 } from '../controllers/questionController.js';
 
 const router = express.Router();
@@ -48,5 +48,13 @@ router.delete(
    SUBMIT QUESTION
 ================================ */
 router.post('/question/:questionId/submit', verifyToken, submitQuestion);
+  
 
+//student get api 
+
+router.get(
+  "/student/questions/:subjectId/:sectionId",
+  verifyToken,
+  getStudentQuestions
+);
 export default router;
