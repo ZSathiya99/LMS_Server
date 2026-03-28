@@ -66,7 +66,6 @@ const getAcademicYear = (semester) => {
 export const getStreamBySubject = async (req, res) => {
   try {
     const { subjectId, sectionId } = req.params;
-    const staffId = req.user.facultyId;
 
     if (
       !mongoose.Types.ObjectId.isValid(subjectId) ||
@@ -75,29 +74,54 @@ export const getStreamBySubject = async (req, res) => {
       return res.status(400).json({ message: 'Invalid ID' });
     }
 
-    /* 🔥 Corrected allocation search */
-    const allocation = await AdminAllocation.findOne(
-      {
+    let allocation;
+
+    // ================================
+    // 🔥 ROLE BASED ALLOCATION CHECK
+    // ================================
+    if (req.user.role === "faculty" || req.user.role === "HOD") {
+
+      const staffId = req.user.facultyId;
+
+      allocation = await AdminAllocation.findOne({
         subjects: {
           $elemMatch: {
-            subjectId: subjectId, // ✅ FIXED HERE
+            subjectId,
             sections: {
               $elemMatch: {
                 _id: sectionId,
-                'staff.id': String(staffId)
+                "staff.id": String(staffId)
               }
             }
           }
         }
-      },
-      {
-        department: 1,
-        regulation: 1,
-        semester: 1,
-        semesterType: 1,
-        subjects: 1
+      });
+
+    } else if (req.user.role === "student") {
+
+      // 🔥 Student should only access their section
+      if (String(req.user.sectionId) !== String(sectionId)) {
+        return res.status(403).json({
+          message: "Access denied for this section"
+        });
       }
-    );
+
+      allocation = await AdminAllocation.findOne({
+        subjects: {
+          $elemMatch: {
+            subjectId,
+            sections: {
+              $elemMatch: {
+                _id: sectionId
+              }
+            }
+          }
+        }
+      });
+
+    } else {
+      return res.status(403).json({ message: "Unauthorized role" });
+    }
 
     if (!allocation) {
       return res.status(404).json({
@@ -105,7 +129,9 @@ export const getStreamBySubject = async (req, res) => {
       });
     }
 
-    /* 🔥 Find correct subject using subjectId */
+    // ================================
+    // 🔥 FIND SUBJECT & SECTION
+    // ================================
     const subject = allocation.subjects.find(
       (sub) => String(sub.subjectId) === String(subjectId)
     );
@@ -117,19 +143,17 @@ export const getStreamBySubject = async (req, res) => {
     }
 
     const section = subject.sections.find(
-      (sec) =>
-        String(sec._id) === String(sectionId) &&
-        String(sec.staff?.id) === String(staffId)
+      (sec) => String(sec._id) === String(sectionId)
     );
 
     if (!section) {
       return res.status(404).json({
-        message: 'Section not found for this staff'
+        message: 'Section not found'
       });
     }
 
     const subjectData = {
-      subjectId: subject.subjectId, // ✅ now correct reference
+      subjectId: subject.subjectId,
       sectionId: section._id,
       department: allocation.department,
       regulation: allocation.regulation,
@@ -141,12 +165,22 @@ export const getStreamBySubject = async (req, res) => {
       classroomCode: section.classroomCode
     };
 
-    /* 🔥 Fetch Stream Posts */
-    const streamPosts = await Stream.find({
+    // ================================
+    // 🔥 STREAM FILTER
+    // ================================
+    let filter = {
       subjectId,
-      sectionId,
-      staffId
-    })
+      sectionId
+    };
+
+    // Staff → only their posts
+    if (req.user.role === "faculty" || req.user.role === "HOD") {
+      filter.staffId = req.user.facultyId;
+    }
+
+    // Student → no staff filter
+
+    const streamPosts = await Stream.find(filter)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -163,6 +197,7 @@ export const getStreamBySubject = async (req, res) => {
       totalPosts: streamPosts.length,
       stream: streamPosts
     });
+
   } catch (error) {
     console.error('Get Stream Error:', error);
     return res.status(500).json({ message: error.message });

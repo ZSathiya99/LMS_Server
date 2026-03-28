@@ -42,7 +42,7 @@ export const sendMail = async ({ to, subject, html }) => {
     const transport = initializeTransporter();
 
     await transport.sendMail({
-      from: `"SECE Admission Portal" <${process.env.EMAIL_USER}>`,
+      from: `"SECE LMS Portal" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html

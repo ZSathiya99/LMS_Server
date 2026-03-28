@@ -1,18 +1,18 @@
-import crypto from 'crypto';
-import Student from '../models/Student.js';
-import Faculty from '../models/Faculty.js';
-import AdminAllocation from '../models/adminAllocationModel.js';
-import ClassroomInvitation from '../models/ClassroomInvitation.js';
-import ClassroomMember from '../models/ClassroomMembers.js';
-import { sendMail } from '../utils/sendMail.js';
-import buildInviteEmail from '../utils/buildInviteEmail.js';
+import crypto from "crypto";
+import Student from "../models/Student.js";
+import Faculty from "../models/Faculty.js";
+import AdminAllocation from "../models/adminAllocationModel.js";
+import ClassroomInvitation from "../models/ClassroomInvitation.js";
+import ClassroomMember from "../models/ClassroomMembers.js";
+import { sendMail } from "../utils/sendMail.js";
+import buildInviteEmail from "../utils/buildInviteEmail.js";
 
 // Helper function
 const getAcademicYear = (semester) => {
-  if (semester === 1 || semester === 2) return '1st Year';
-  if (semester === 3 || semester === 4) return '2nd Year';
-  if (semester === 5 || semester === 6) return '3rd Year';
-  if (semester === 7 || semester === 8) return '4th Year';
+  if (semester === 1 || semester === 2) return "1st Year";
+  if (semester === 3 || semester === 4) return "2nd Year";
+  if (semester === 5 || semester === 6) return "3rd Year";
+  if (semester === 7 || semester === 8) return "4th Year";
   return `${semester}th Semester`;
 };
 
@@ -21,11 +21,11 @@ export const getStaffSubjectPlanning = async (req, res) => {
     const staffId = req.user.facultyId;
 
     const imageList = [
-      '/images/banner1.png',
-      '/images/banner2.png',
-      '/images/banner3.png',
-      '/images/banner4.png',
-      '/images/banner5.png'
+      "/images/banner1.png",
+      "/images/banner2.png",
+      "/images/banner3.png",
+      "/images/banner4.png",
+      "/images/banner5.png",
     ];
 
     const getRandomImage = () => {
@@ -34,7 +34,7 @@ export const getStaffSubjectPlanning = async (req, res) => {
     };
 
     const allocations = await AdminAllocation.find({
-      'subjects.sections.staff.id': staffId.toString()
+      "subjects.sections.staff.id": staffId.toString(),
     });
 
     const result = [];
@@ -68,24 +68,24 @@ export const getStaffSubjectPlanning = async (req, res) => {
               subjectName: subject.subject,
               sectionName: section.sectionName,
               classroomCode: section.classroomCode, // ✅ RETURN THIS
-              image: getRandomImage()
+              image: getRandomImage(),
             });
           }
         }
       }
 
       if (isModified) {
-        allocation.markModified('subjects');
+        allocation.markModified("subjects");
         await allocation.save();
       }
     }
 
     return res.status(200).json({
       total: result.length,
-      data: result
+      data: result,
     });
   } catch (error) {
-    console.error('Subject Planning Error:', error);
+    console.error("Subject Planning Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -96,7 +96,7 @@ export const joinClassroom = async (req, res) => {
 
     if (!code) {
       return res.status(400).json({
-        message: 'Classroom code is required'
+        message: "Classroom code is required",
       });
     }
 
@@ -104,27 +104,27 @@ export const joinClassroom = async (req, res) => {
     const userRole = req.user.role; // 👈 make sure this exists in JWT
 
     let user = null;
-    let userModel = '';
-    let role = '';
+    let userModel = "";
+    let role = "";
 
     // 🔥 Detect user type
-    if (userRole === 'student') {
+    if (userRole === "student") {
       user = await Student.findOne({ email: userEmail });
-      userModel = 'Student';
-      role = 'student';
-    } else if (userRole === 'faculty') {
+      userModel = "Student";
+      role = "student";
+    } else if (userRole === "faculty") {
       user = await Faculty.findOne({ email: userEmail });
-      userModel = 'Faculty';
-      role = 'faculty';
+      userModel = "Faculty";
+      role = "faculty";
     } else {
       return res.status(403).json({
-        message: 'Unauthorized role'
+        message: "Unauthorized role",
       });
     }
 
     if (!user) {
       return res.status(404).json({
-        message: `${userRole} not found`
+        message: `${userRole} not found`,
       });
     }
 
@@ -132,12 +132,12 @@ export const joinClassroom = async (req, res) => {
 
     // 🔍 Find allocation that contains section with this classroomCode
     const allocation = await AdminAllocation.findOne({
-      'subjects.sections.classroomCode': code
+      "subjects.sections.classroomCode": code,
     });
 
     if (!allocation) {
       return res.status(404).json({
-        message: 'Invalid classroom code'
+        message: "Invalid classroom code",
       });
     }
 
@@ -157,7 +157,7 @@ export const joinClassroom = async (req, res) => {
 
     if (!sectionFound) {
       return res.status(404).json({
-        message: 'Invalid classroom code'
+        message: "Invalid classroom code",
       });
     }
 
@@ -165,12 +165,12 @@ export const joinClassroom = async (req, res) => {
 
     const alreadyJoined = await ClassroomMember.findOne({
       sectionId,
-      userId
+      userId,
     });
 
     if (alreadyJoined) {
       return res.status(409).json({
-        message: 'Already joined this classroom'
+        message: "Already joined this classroom",
       });
     }
 
@@ -180,19 +180,19 @@ export const joinClassroom = async (req, res) => {
       userId,
       userModel,
       role,
-      joinMethod: 'self'
+      joinMethod: "self",
     });
 
     return res.status(200).json({
-      message: 'Joined classroom successfully',
+      message: "Joined classroom successfully",
       subjectName: subjectFound.subject,
       subjectCode: subjectFound.code,
-      section: sectionFound.sectionName
+      section: sectionFound.sectionName,
     });
   } catch (error) {
-    console.error('Join Classroom Error:', error);
+    console.error("Join Classroom Error:", error);
     return res.status(500).json({
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -205,21 +205,21 @@ export const sendInvitation = async (req, res) => {
 
     if (!Array.isArray(emails) || emails.length === 0 || !role) {
       return res.status(400).json({
-        message: 'Emails array and role are required'
+        message: "Emails array and role are required",
       });
     }
 
-    if (!['student', 'faculty'].includes(role)) {
-      return res.status(400).json({ message: 'Invalid role' });
+    if (!["student", "faculty"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
     }
 
     // 🔍 Validate section exists
     const allocation = await AdminAllocation.findOne({
-      'subjects.sections._id': sectionId
+      "subjects.sections._id": sectionId,
     });
 
     if (!allocation) {
-      return res.status(404).json({ message: 'Classroom not found' });
+      return res.status(404).json({ message: "Classroom not found" });
     }
 
     let sectionFound, subjectFound;
@@ -235,7 +235,7 @@ export const sendInvitation = async (req, res) => {
     }
 
     if (!sectionFound) {
-      return res.status(404).json({ message: 'Classroom section not found' });
+      return res.status(404).json({ message: "Classroom section not found" });
     }
 
     // 🔹 Normalize + unique emails
@@ -243,8 +243,8 @@ export const sendInvitation = async (req, res) => {
       ...new Set(
         emails
           .map((e) => e?.trim().toLowerCase())
-          .filter((e) => e && e.includes('@'))
-      )
+          .filter((e) => e && e.includes("@")),
+      ),
     ];
 
     const invited = [];
@@ -254,14 +254,14 @@ export const sendInvitation = async (req, res) => {
       // 1️⃣ Already a member?
       const alreadyMember = await ClassroomMember.findOne({
         sectionId,
-        role
+        role,
       }).populate({
-        path: 'userId',
-        match: { email }
+        path: "userId",
+        match: { email },
       });
 
       if (alreadyMember?.userId) {
-        skipped.push({ email, reason: 'Already joined' });
+        skipped.push({ email, reason: "Already joined" });
         continue;
       }
 
@@ -269,24 +269,45 @@ export const sendInvitation = async (req, res) => {
       const existingInvite = await ClassroomInvitation.findOne({
         sectionId,
         email,
-        role
+        role,
       });
 
       if (existingInvite) {
-        if (
-          existingInvite.status === 'Pending' &&
-          existingInvite.expiresAt < new Date()
-        ) {
-          existingInvite.status = 'Expired';
+        // 🔥 If expired → update
+        if (existingInvite.expiresAt < new Date()) {
+          existingInvite.status = "Expired";
           await existingInvite.save();
-        } else if (existingInvite.status === 'Pending') {
-          skipped.push({ email, reason: 'Invitation already sent' });
-          continue;
         }
+
+        // 🔥 RESEND invitation
+        const newToken = crypto.randomBytes(32).toString("hex");
+
+        existingInvite.token = newToken;
+        existingInvite.status = "Pending";
+        existingInvite.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await existingInvite.save();
+
+        const inviteLink = `${process.env.FRONTEND_URL}classroom/invite?token=${newToken}`;
+
+        await sendMail({
+          to: email,
+          subject: `Invitation to join ${subjectFound.code} - ${sectionFound.sectionName}`,
+          html: buildInviteEmail({
+            subjectName: subjectFound.subject,
+            subjectCode: subjectFound.code,
+            sectionName: sectionFound.sectionName,
+            role,
+            inviteLink,
+          }),
+        });
+
+        invited.push(email);
+        continue;
       }
 
       // 3️⃣ Create invitation
-      const token = crypto.randomBytes(32).toString('hex');
+      const token = crypto.randomBytes(32).toString("hex");
 
       await ClassroomInvitation.create({
         sectionId,
@@ -294,7 +315,7 @@ export const sendInvitation = async (req, res) => {
         invitedBy: facultyId,
         role,
         token,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
 
       // 4️⃣ Send mail
@@ -305,35 +326,35 @@ export const sendInvitation = async (req, res) => {
         subjectCode: subjectFound.code,
         sectionName: sectionFound.sectionName,
         role,
-        inviteLink
+        inviteLink,
       });
 
       await sendMail({
         to: email,
         subject: `Invitation to join ${subjectFound.code} - ${sectionFound.sectionName}`,
-        html
+        html,
       });
 
       invited.push(email);
     }
 
     return res.status(201).json({
-      message: 'Invitation process completed',
+      message: "Invitation process completed",
       invited,
       skipped,
       invitedCount: invited.length,
-      skippedCount: skipped.length
+      skippedCount: skipped.length,
     });
   } catch (error) {
-    console.error('Send Invitation Error:', error);
+    console.error("Send Invitation Error:", error);
 
-    if (error.message.includes('Email')) {
+    if (error.message.includes("Email")) {
       return res.status(500).json({
-        message: 'Email service not configured'
+        message: "Email service not configured",
       });
     }
 
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -341,21 +362,22 @@ export const respondInvitation = async (req, res) => {
   try {
     const { token, action } = req.body;
 
-    if (!['accept', 'reject'].includes(action)) {
-      return res.status(400).json({ message: 'Invalid action' });
+
+    if (!["accept", "reject"].includes(action)) {
+      return res.status(400).json({ message: "Invalid action" });
     }
 
     let userId = req.user.id;
     const userRole = req.user.role;
     const userEmail = req.user.email;
 
-    if (userRole === 'faculty') {
+    if (userRole === "faculty") {
       userId = req.user.facultyId;
     }
-    if (userRole === 'student') {
+    if (userRole === "student") {
       const studentId = await Student.findOne({ email: userEmail });
       if (!studentId) {
-        return res.status(404).json({ message: 'Student not found' });
+        return res.status(404).json({ message: "Student not found" });
       }
       userId = studentId._id;
     }
@@ -364,69 +386,69 @@ export const respondInvitation = async (req, res) => {
     const invitation = await ClassroomInvitation.findOne({ token });
 
     if (!invitation) {
-      return res.status(404).json({ message: 'Invalid invitation' });
+      return res.status(404).json({ message: "Invalid invitation" });
     }
 
     // 2️⃣ Expiry check
     if (invitation.expiresAt < new Date()) {
-      if (invitation.status === 'Pending') {
-        invitation.status = 'Expired';
+      if (invitation.status === "Pending") {
+        invitation.status = "Expired";
         await invitation.save();
       }
-      return res.status(400).json({ message: 'Invitation expired' });
+      return res.status(400).json({ message: "Invitation expired" });
     }
 
     // 3️⃣ Email validation
     if (invitation.email !== userEmail) {
-      return res.status(403).json({ message: 'Email mismatch' });
+      return res.status(403).json({ message: "Email mismatch" });
     }
 
     // 4️⃣ Role validation
     if (
-      (invitation.role === 'faculty' && userRole !== 'faculty') ||
-      (invitation.role === 'student' && userRole !== 'student')
+      (invitation.role === "faculty" && userRole !== "faculty") ||
+      (invitation.role === "student" && userRole !== "student")
     ) {
-      return res.status(403).json({ message: 'Role mismatch' });
+      return res.status(403).json({ message: "Role mismatch" });
     }
 
     // 5️⃣ Section existence check
     const allocation = await AdminAllocation.findOne({
-      'subjects.sections._id': invitation.sectionId
+      "subjects.sections._id": invitation.sectionId,
     });
 
     if (!allocation) {
-      invitation.status = 'Expired';
+      invitation.status = "Expired";
       await invitation.save();
 
       return res.status(404).json({
-        message: 'Classroom no longer exists'
+        message: "Classroom no longer exists",
       });
     }
 
     // 6️⃣ Already joined?
     const alreadyJoined = await ClassroomMember.findOne({
       sectionId: invitation.sectionId,
-      userId
+      userId,
     });
 
     if (alreadyJoined) {
-      if (invitation.status === 'Pending') {
-        invitation.status = 'Accepted';
+      if (invitation.status === "Pending") {
+        invitation.status = "Accepted";
         await invitation.save();
       }
 
       return res.status(200).json({
-        message: 'Already joined classroom'
+        message: "Already joined classroom",
       });
     }
 
     // 7️⃣ Reject
-    if (action === 'reject') {
-      invitation.status = 'Rejected';
+    if (action === "reject") {
+      invitation.status = "Rejected";
       await invitation.save();
 
       return res.status(200).json({
-        message: 'Invitation rejected'
+        message: "Invitation rejected",
       });
     }
 
@@ -434,28 +456,110 @@ export const respondInvitation = async (req, res) => {
     await ClassroomMember.create({
       sectionId: invitation.sectionId,
       userId,
-      userModel: invitation.role === 'faculty' ? 'Faculty' : 'Student',
+      userModel: invitation.role === "faculty" ? "Faculty" : "Student",
       role: invitation.role,
-      joinMethod: 'invite'
+      joinMethod: "invite",
     });
 
-    invitation.status = 'Accepted';
+    invitation.status = "Accepted";
     await invitation.save();
 
     return res.status(200).json({
-      message: 'Invitation accepted and classroom joined successfully'
+      message: "Invitation accepted and classroom joined successfully",
     });
   } catch (error) {
-    console.error('Respond Invitation Error:', error);
+    console.error("Respond Invitation Error:", error);
 
     if (error.code === 11000) {
       return res.status(200).json({
-        message: 'Already joined classroom'
+        message: "Already joined classroom",
       });
     }
 
     return res.status(500).json({
-      message: 'Internal server error'
+      message: "Internal server error",
+    });
+  }
+};
+  
+
+
+// student ClassroomMember in get 
+export const getStudentClassroom = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const userRole = req.user.role;
+
+    // 1️⃣ Only student allowed
+    if (userRole !== "student") {
+      return res.status(403).json({
+        message: "Access denied. Only students allowed",
+      });
+    }
+
+    // 2️⃣ Get student
+    const student = await Student.findOne({ email: userEmail }).lean();
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    // 3️⃣ Get all joined classrooms
+    const memberships = await ClassroomMember.find({
+      userId: student._id,
+      role: "student",
+    }).lean();
+
+    if (!memberships.length) {
+      return res.status(404).json({
+        message: "No classrooms joined",
+      });
+    }
+
+    const results = [];
+
+    // 4️⃣ Loop each classroom
+    for (const m of memberships) {
+      const sectionId = m.sectionId;
+
+      const allocation = await AdminAllocation.findOne({
+        "subjects.sections._id": sectionId,
+      }).lean();
+
+      if (!allocation) continue;
+
+      for (const sub of allocation.subjects) {
+        const section = sub.sections.find(
+          (s) => s._id.toString() === sectionId.toString()
+        );
+
+        if (section) {
+          // ✅ FIX: Directly use stored staff object
+          const staffName = section.staff?.name || "";
+
+          results.push({
+            studentName: `${student.firstName} ${student.lastName}`,
+            year: student.year,
+            subject: sub.subject,
+            section: section.sectionName,
+            staffName: staffName,
+          });
+
+          break;
+        }
+      }
+    }
+
+    res.json({
+      totalSubjects: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Student Classroom Error:", error);
+    res.status(500).json({
+      message: error.message,
     });
   }
 };
