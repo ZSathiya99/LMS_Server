@@ -38,7 +38,7 @@ app.use('/images', express.static(path.join(process.cwd(), 'images')));
 // CORS
 app.use(
   cors({
-    origin: ['http://localhost:5173'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', "https://eshwarlearningmanagement.netlify.app"],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true
   })

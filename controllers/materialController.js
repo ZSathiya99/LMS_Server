@@ -9,17 +9,25 @@ import Student from "../models/Student.js";
 ===================================================== */
 export const createMaterial = async (req, res) => {
   try {
-    const { subjectId, sectionId, title, instruction, link, youtubeLink } =
-      req.body;
+    const {
+      subjectId,
+      sectionId,
+      title,
+      instruction,
+      link,
+      youtubeLink
+    } = req.body;
 
-    const staffId = req.user.facultyId;
+    const staffId = req.user?.facultyId;
 
+    // 🔥 Validation
     if (!subjectId || !sectionId || !title) {
       return res.status(400).json({
         message: 'Subject ID, Section ID and title are required'
       });
     }
 
+    // 🔥 ObjectId validation
     if (
       !mongoose.Types.ObjectId.isValid(subjectId) ||
       !mongoose.Types.ObjectId.isValid(sectionId)
@@ -29,15 +37,22 @@ export const createMaterial = async (req, res) => {
       });
     }
 
-    const uploadedFiles =
-      req.files?.map(
-        (file) =>
-          `${req.protocol}://${req.get('host')}/uploads/${file.filename}`
-      ) || [];
+    // 🔥 DEBUG (remove later)
+    console.log("FILES:", req.files);
 
+    // 🔥 Handle file upload safely
+    let uploadedFiles = [];
+
+    if (req.files && req.files.length > 0) {
+      uploadedFiles = req.files.map((file) => {
+        return `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+      });
+    }
+
+    // 🔥 Create material
     const material = await Material.create({
       subjectId,
-      sectionId, // 🔥 added
+      sectionId,
       staffId,
       title,
       instruction: instruction || '',
@@ -51,9 +66,13 @@ export const createMaterial = async (req, res) => {
       message: 'Material created successfully',
       data: material
     });
+
   } catch (error) {
     console.error('Create Material Error:', error);
-    return res.status(500).json({ message: error.message });
+
+    return res.status(500).json({
+      message: error.message || 'Internal Server Error'
+    });
   }
 };
 
