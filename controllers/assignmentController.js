@@ -291,17 +291,29 @@ export const addAssignmentComment = async (req, res) => {
 /* =====================================================
    STUDENT SUBMIT ASSIGNMENT
 ===================================================== */
+
+
 export const submitAssignment = async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const studentId = req.user.studentId;
 
-    const assignment = await Assignment.findById(assignmentId);
-    if (!assignment) {
-      return res.status(404).json({ message: "Assignment not found" });
+    // ✅ FIXED (based on your token)
+    const studentId = req.user.id;
+
+    if (!studentId) {
+      return res.status(400).json({
+        message: "Student ID missing in token",
+      });
     }
 
-    // ✅ multiple files
+    const assignment = await Assignment.findById(assignmentId);
+
+    if (!assignment) {
+      return res.status(404).json({
+        message: "Assignment not found",
+      });
+    }
+
     const files = req.files;
 
     if (!files || files.length === 0) {
@@ -310,7 +322,7 @@ export const submitAssignment = async (req, res) => {
       });
     }
 
-    // ✅ generate file URLs
+    // ✅ create file URLs
     const fileUrls = files.map(
       (file) =>
         `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
@@ -322,25 +334,28 @@ export const submitAssignment = async (req, res) => {
     );
 
     if (existing) {
-      // ✅ update (replace or append — your choice)
-      existing.attachments = fileUrls; // replace old files
+      // ✅ replace files
+      existing.attachments = fileUrls;
       existing.submittedAt = new Date();
     } else {
       assignment.submissions.push({
         studentId,
-        attachments: fileUrls, // ✅ array
+        attachments: fileUrls,
         submittedAt: new Date(),
       });
     }
 
     await assignment.save();
 
-    return res.json({
+    return res.status(200).json({
       message: "Assignment submitted successfully",
       submissions: assignment.submissions,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    console.error(error);
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
