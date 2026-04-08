@@ -31,25 +31,29 @@ const submissionSchema = new mongoose.Schema(
   {
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Student',
-      required: true
+      ref: "Student",
+      required: true,
     },
 
-    attachment: String,
+    // ✅ multiple files
+    attachments: [
+      {
+        type: String,
+      },
+    ],
 
     marksObtained: {
       type: Number,
-      default: null
+      default: null,
     },
 
     submittedAt: {
       type: Date,
-      default: Date.now
-    }
+      default: Date.now,
+    },
   },
   { timestamps: true }
 );
-
 /* ================================
    MAIN ASSIGNMENT SCHEMA
 ================================ */

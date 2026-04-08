@@ -298,33 +298,46 @@ export const submitAssignment = async (req, res) => {
 
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) {
-      return res.status(404).json({ message: 'Assignment not found' });
+      return res.status(404).json({ message: "Assignment not found" });
     }
 
-    const file = req.file
-      ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
-      : null;
+    // ✅ multiple files
+    const files = req.files;
 
+    if (!files || files.length === 0) {
+      return res.status(400).json({
+        message: "Please upload at least one file",
+      });
+    }
+
+    // ✅ generate file URLs
+    const fileUrls = files.map(
+      (file) =>
+        `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+    );
+
+    // 🔍 check existing submission
     const existing = assignment.submissions.find(
       (s) => s.studentId.toString() === studentId.toString()
     );
 
     if (existing) {
-      existing.attachment = file;
+      // ✅ update (replace or append — your choice)
+      existing.attachments = fileUrls; // replace old files
       existing.submittedAt = new Date();
     } else {
       assignment.submissions.push({
         studentId,
-        attachment: file,
-        submittedAt: new Date()
+        attachments: fileUrls, // ✅ array
+        submittedAt: new Date(),
       });
     }
 
     await assignment.save();
 
     return res.json({
-      message: 'Assignment submitted successfully',
-      submissions: assignment.submissions
+      message: "Assignment submitted successfully",
+      submissions: assignment.submissions,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

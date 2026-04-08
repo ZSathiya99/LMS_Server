@@ -60,9 +60,9 @@ router.post(
 ===================================================== */
 
 router.post(
-  '/assignment/:assignmentId/submit',
+  "/submit-assignment/:assignmentId",
   verifyToken,
-  uploadDocuments.single('attachment'),
+  uploadDocuments.array("attachments", 5), // ✅ multiple files
   submitAssignment
 );
 
