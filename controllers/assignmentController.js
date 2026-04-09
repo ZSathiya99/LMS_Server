@@ -588,21 +588,13 @@ export const getAssignmentStudentStatus = async (req, res) => {
 
       const studentId = student._id.toString();
 
-      // ✅ 1. exact match
-      let submission = submissions.find(
+      // ✅ ONLY exact match
+      const submission = submissions.find(
         (s) => s.studentId.toString() === studentId
       );
 
-      // ⚠️ 2. fallback ONLY for showing file (NOT marks logic)
-      let attachments = [];
-      if (submission) {
-        attachments = submission.attachments || [];
-      } else if (submissions.length === 1) {
-        attachments = submissions[0].attachments || [];
-      }
-
       return {
-         assignmentId,
+        assignmentId,
         studentId,
         name: student.firstName,
         email: student.email,
@@ -610,9 +602,10 @@ export const getAssignmentStudentStatus = async (req, res) => {
 
         status: submission ? "submitted" : "pending",
 
-        attachments, // ✅ file will show
+        // ✅ FIX: show file ONLY if submitted
+        attachments: submission ? submission.attachments || [] : [],
 
-        marksObtained: submission?.marksObtained ?? null, // ✅ no wrong marks
+        marksObtained: submission?.marksObtained ?? null,
         totalMarks: assignment.marks || 100,
         submittedAt: submission?.submittedAt || null,
       };
