@@ -10,7 +10,7 @@ import {
   deleteAssignment,
   addAssignmentComment,
   submitAssignment,
-  gradeSubmission,getStudentAssignments,getAssignmentSubmissions
+  gradeSubmission,getStudentAssignments,getAssignmentSubmissions,getAssignmentStudentStatus,updateMarks
   // getAssignmentDetails,
 } from '../controllers/assignmentController.js';
 import Student from '../models/Student.js';
@@ -97,5 +97,16 @@ router.get(
   "/assignment-submissions/:assignmentId",
   verifyToken,
   getAssignmentSubmissions
+);
+
+router.get(
+  "/assignment-status/:assignmentId/:sectionId",
+  verifyToken,
+  getAssignmentStudentStatus
+);
+router.put(
+  "/assignment-marks/:assignmentId/:studentId",
+  verifyToken,
+  updateMarks
 );
 export default router;

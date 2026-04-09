@@ -35,6 +35,15 @@ const submissionSchema = new mongoose.Schema(
       required: true,
     },
 
+    // ✅ ADD THESE (IMPORTANT FIX)
+    studentName: {
+      type: String,
+    },
+
+    studentEmail: {
+      type: String,
+    },
+
     // ✅ multiple files
     attachments: [
       {
