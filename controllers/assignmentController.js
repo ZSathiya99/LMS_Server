@@ -358,6 +358,46 @@ export const submitAssignment = async (req, res) => {
     });
   }
 };
+//getAssignmentSubmissions
+
+export const getAssignmentSubmissions = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+
+    // ✅ Role check (inside controller)
+    if (req.user.role !== "faculty") {
+      return res.status(403).json({
+        message: "Access denied. Faculty only",
+      });
+    }
+
+    // 🔍 Find assignment
+    const assignment = await Assignment.findById(assignmentId)
+      .populate("submissions.studentId", "name email");
+
+    if (!assignment) {
+      return res.status(404).json({
+        message: "Assignment not found",
+      });
+    }
+
+    // ✅ Sort latest submissions first
+    const submissions = assignment.submissions.sort(
+      (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
+    );
+
+    return res.status(200).json({
+      message: "Submissions fetched successfully",
+      totalSubmissions: submissions.length,
+      submissions,
+    });
+  } catch (error) {
+    console.error("Error:", error.message);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
 
 /* =====================================================
    GRADE SUBMISSION (STAFF)
