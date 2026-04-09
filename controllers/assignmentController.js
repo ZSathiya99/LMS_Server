@@ -364,16 +364,17 @@ export const getAssignmentSubmissions = async (req, res) => {
   try {
     const { assignmentId } = req.params;
 
-    // ✅ Role check (inside controller)
+    // ✅ role check
     if (req.user.role !== "faculty") {
       return res.status(403).json({
         message: "Access denied. Faculty only",
       });
     }
 
-    // 🔍 Find assignment
+    // ✅ fetch only needed data + lean (faster)
     const assignment = await Assignment.findById(assignmentId)
-      .populate("submissions.studentId", "name email");
+      .select("submissions")
+      .lean();
 
     if (!assignment) {
       return res.status(404).json({
@@ -381,7 +382,7 @@ export const getAssignmentSubmissions = async (req, res) => {
       });
     }
 
-    // ✅ Sort latest submissions first
+    // ✅ sort (fast JS)
     const submissions = assignment.submissions.sort(
       (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
     );
