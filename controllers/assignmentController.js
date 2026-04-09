@@ -291,10 +291,13 @@ export const addAssignmentComment = async (req, res) => {
 /* =====================================================
    STUDENT SUBMIT ASSIGNMENT
 ===================================================== */
+
+
 export const submitAssignment = async (req, res) => {
   try {
     const { assignmentId } = req.params;
 
+    // ✅ FIXED (based on your token)
     const studentId = req.user.id;
 
     if (!studentId) {
@@ -311,24 +314,6 @@ export const submitAssignment = async (req, res) => {
       });
     }
 
-    // ✅ FIX: check membership
-    let isMember = await ClassroomMembers.findOne({
-      sectionId: assignment.sectionId,
-      userId: studentId,
-      role: "student",
-    });
-
-    // 🔥 AUTO FIX (instead of error)
-    if (!isMember) {
-      isMember = await ClassroomMembers.create({
-        sectionId: assignment.sectionId,
-        userId: studentId,
-        role: "student",
-        joinMethod: "auto",
-      });
-    }
-
-    // ✅ file validation
     const files = req.files;
 
     if (!files || files.length === 0) {
@@ -337,20 +322,21 @@ export const submitAssignment = async (req, res) => {
       });
     }
 
-    // ✅ file URLs
+    // ✅ create file URLs
     const fileUrls = files.map(
       (file) =>
         `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
     );
 
-    // ✅ submission logic
-    const existingIndex = assignment.submissions.findIndex(
+    // 🔍 check existing submission
+    const existing = assignment.submissions.find(
       (s) => s.studentId.toString() === studentId.toString()
     );
 
-    if (existingIndex !== -1) {
-      assignment.submissions[existingIndex].attachments = fileUrls;
-      assignment.submissions[existingIndex].submittedAt = new Date();
+    if (existing) {
+      // ✅ replace files
+      existing.attachments = fileUrls;
+      existing.submittedAt = new Date();
     } else {
       assignment.submissions.push({
         studentId,
@@ -363,11 +349,10 @@ export const submitAssignment = async (req, res) => {
 
     return res.status(200).json({
       message: "Assignment submitted successfully",
-      studentId,
-      attachments: fileUrls,
+      submissions: assignment.submissions,
     });
   } catch (error) {
-    console.error("Submit Assignment Error:", error);
+    console.error(error);
     return res.status(500).json({
       message: error.message,
     });
@@ -576,16 +561,12 @@ export const getAssignmentStudentStatus = async (req, res) => {
   try {
     const { assignmentId, sectionId } = req.params;
 
-    // ✅ 1. role check
     if (req.user.role !== "faculty") {
-      return res.status(403).json({
-        message: "Access denied",
-      });
+      return res.status(403).json({ message: "Access denied" });
     }
 
-    // ✅ 2. get assignment (only needed fields)
     const assignment = await Assignment.findById(assignmentId)
-      .select("submissions marks sectionId")
+      .select("submissions marks")
       .lean();
 
     if (!assignment) {
@@ -594,14 +575,6 @@ export const getAssignmentStudentStatus = async (req, res) => {
       });
     }
 
-    // ✅ 3. optional: validate section match
-    if (assignment.sectionId.toString() !== sectionId) {
-      return res.status(400).json({
-        message: "Invalid section for this assignment",
-      });
-    }
-
-    // ✅ 4. get students
     const members = await ClassroomMembers.find({
       sectionId,
       role: "student",
@@ -609,51 +582,44 @@ export const getAssignmentStudentStatus = async (req, res) => {
 
     const submissions = assignment.submissions || [];
 
-    // ✅ 5. optimize lookup using Map (fast)
-    const submissionMap = new Map();
-    submissions.forEach((s) => {
-      submissionMap.set(s.studentId.toString(), s);
-    });
+    const result = members.map((member) => {
+      const student = member.userId;
+      if (!student) return null;
 
-    // ✅ 6. build response
-    const result = members
-      .map((member) => {
-        const student = member.userId;
-        if (!student) return null;
+      const studentId = student._id.toString();
 
-        const studentId = student._id.toString();
-        const submission = submissionMap.get(studentId);
+      const submission = submissions.find(
+        (s) => s.studentId.toString() === studentId
+      );
 
-        const isSubmitted =
-          submission &&
-          submission.attachments &&
-          submission.attachments.length > 0;
+      // ✅ condition
+      const isSubmitted =
+        submission && submission.attachments && submission.attachments.length > 0;
 
-        return {
-          assignmentId,
-          studentId,
-          name: student.firstName,
-          email: student.email,
-          profileImage: student.profileImage,
+      return {
+        assignmentId,
+        studentId,
+        name: student.firstName,
+        email: student.email,
+        profileImage: student.profileImage,
 
-          status: isSubmitted ? "submitted" : "pending",
+        // ✅ FINAL STATUS LOGIC
+        status: isSubmitted ? "submitted" : "",
 
-          attachments: isSubmitted ? submission.attachments : [],
-          marksObtained: submission?.marksObtained ?? null,
-          totalMarks: assignment.marks || 100,
-          submittedAt: isSubmitted ? submission.submittedAt : null,
-        };
-      })
-      .filter(Boolean);
+        attachments: isSubmitted ? submission.attachments : [],
+        marksObtained: submission?.marksObtained ?? null,
+        totalMarks: assignment.marks || 100,
+        submittedAt: isSubmitted ? submission.submittedAt : null,
+      };
+    }).filter(Boolean);
 
     return res.status(200).json({
       message: "Student assignment status fetched",
-      assignmentId,
       totalStudents: result.length,
       data: result,
     });
   } catch (error) {
-    console.error("Get Assignment Status Error:", error);
+    console.error(error);
     return res.status(500).json({
       message: "Server error",
     });
