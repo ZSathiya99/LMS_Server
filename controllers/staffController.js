@@ -388,7 +388,7 @@ export const respondInvitation = async (req, res) => {
     if (!invitation) {
       return res.status(404).json({ message: "Invalid invitation" });
     }
-
+    
     // 2️⃣ Expiry check
     if (invitation.expiresAt < new Date()) {
       if (invitation.status === "Pending") {
