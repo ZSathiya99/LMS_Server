@@ -561,21 +561,20 @@ export const getAssignmentStudentStatus = async (req, res) => {
   try {
     const { assignmentId, sectionId } = req.params;
 
-    // ✅ role check
     if (req.user.role !== "faculty") {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // ✅ fetch assignment
     const assignment = await Assignment.findById(assignmentId)
       .select("submissions marks")
       .lean();
 
     if (!assignment) {
-      return res.status(404).json({ message: "Assignment not found" });
+      return res.status(404).json({
+        message: "Assignment not found",
+      });
     }
 
-    // ✅ fetch students
     const members = await ClassroomMembers.find({
       sectionId,
       role: "student",
@@ -583,42 +582,41 @@ export const getAssignmentStudentStatus = async (req, res) => {
 
     const submissions = assignment.submissions || [];
 
-    // ✅ create map for fast lookup
-    const submissionMap = new Map();
-    submissions.forEach((s) => {
-      submissionMap.set(s.studentId.toString(), s);
-    });
+    const result = members.map((member) => {
+      const student = member.userId;
+      if (!student) return null;
 
-    const result = members
-      .map((member) => {
-        const student = member.userId;
-        if (!student) return null;
+      const studentId = student._id.toString();
 
-        const studentId = student._id.toString();
+      // ✅ 1. exact match
+      let submission = submissions.find(
+        (s) => s.studentId.toString() === studentId
+      );
 
-        // ✅ 1. normal match
-        let submission = submissionMap.get(studentId);
+      // ⚠️ 2. fallback ONLY for showing file (NOT marks logic)
+      let attachments = [];
+      if (submission) {
+        attachments = submission.attachments || [];
+      } else if (submissions.length === 1) {
+        attachments = submissions[0].attachments || [];
+      }
 
-        // ⚠️ 2. fallback (ONLY if single submission exists)
-        if (!submission && submissions.length === 1) {
-          submission = submissions[0];
-        }
+      return {
+         assignmentId,
+        studentId,
+        name: student.firstName,
+        email: student.email,
+        profileImage: student.profileImage,
 
-        return {
-          studentId,
-          name: student.firstName,
-          email: student.email,
-          profileImage: student.profileImage,
+        status: submission ? "submitted" : "pending",
 
-          status: submission ? "submitted" : "pending",
+        attachments, // ✅ file will show
 
-          attachments: submission?.attachments || [],
-          marksObtained: submission?.marksObtained ?? null,
-          totalMarks: assignment.marks || 100,
-          submittedAt: submission?.submittedAt || null,
-        };
-      })
-      .filter(Boolean);
+        marksObtained: submission?.marksObtained ?? null, // ✅ no wrong marks
+        totalMarks: assignment.marks || 100,
+        submittedAt: submission?.submittedAt || null,
+      };
+    }).filter(Boolean);
 
     return res.status(200).json({
       message: "Student assignment status fetched",
@@ -626,17 +624,34 @@ export const getAssignmentStudentStatus = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error("Error:", error);
-    return res.status(500).json({ message: "Server error" });
+    console.error(error);
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };
 //Update Marks API
-export const updateMarks = async (req, res) => {
+export const addMarks = async (req, res) => {
   try {
     const { assignmentId, studentId } = req.params;
     const { marks } = req.body;
 
+    if (req.user.role !== "faculty") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
     const assignment = await Assignment.findById(assignmentId);
+
+    if (!assignment) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+
+    // 🔍 debug
+    console.log(
+      "DB studentIds:",
+      assignment.submissions.map(s => s.studentId.toString())
+    );
+    console.log("Request studentId:", studentId);
 
     const submission = assignment.submissions.find(
       (s) => s.studentId.toString() === studentId
@@ -644,7 +659,7 @@ export const updateMarks = async (req, res) => {
 
     if (!submission) {
       return res.status(404).json({
-        message: "Submission not found",
+        message: "Submission not found - ID mismatch",
       });
     }
 
@@ -653,11 +668,9 @@ export const updateMarks = async (req, res) => {
     await assignment.save();
 
     return res.json({
-      message: "Marks updated successfully",
+      message: "Marks added successfully",
     });
   } catch (error) {
-    return res.status(500).json({
-      message: error.message,
-    });
+    return res.status(500).json({ message: error.message });
   }
 };
