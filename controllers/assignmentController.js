@@ -588,10 +588,13 @@ export const getAssignmentStudentStatus = async (req, res) => {
 
       const studentId = student._id.toString();
 
-      // ✅ ONLY exact match
       const submission = submissions.find(
         (s) => s.studentId.toString() === studentId
       );
+
+      // ✅ FINAL CONDITION
+      const isSubmitted =
+        submission && submission.attachments && submission.attachments.length > 0;
 
       return {
         assignmentId,
@@ -600,14 +603,12 @@ export const getAssignmentStudentStatus = async (req, res) => {
         email: student.email,
         profileImage: student.profileImage,
 
-        status: submission ? "submitted" : "pending",
+        status: isSubmitted ? "submitted" : "pending", // ✅ FIXED
 
-        // ✅ FIX: show file ONLY if submitted
-        attachments: submission ? submission.attachments || [] : [],
-
+        attachments: isSubmitted ? submission.attachments : [],
         marksObtained: submission?.marksObtained ?? null,
         totalMarks: assignment.marks || 100,
-        submittedAt: submission?.submittedAt || null,
+        submittedAt: isSubmitted ? submission.submittedAt : null,
       };
     }).filter(Boolean);
 
