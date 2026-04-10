@@ -364,23 +364,23 @@ export const submitAssignment = async (req, res) => {
     });
   }
 };
-//getAssignmentSubmissions
+//GET API (Student – view own submission)
 
-export const getAssignmentSubmissions = async (req, res) => {
+export const getMySubmission = async (req, res) => {
   try {
     const { assignmentId } = req.params;
 
-    // ✅ role check
-    if (req.user.role !== "faculty") {
-      return res.status(403).json({
-        message: "Access denied. Faculty only",
+    const email = req.user.email;
+
+    const student = await Student.findOne({ email }).lean();
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
       });
     }
 
-    // ✅ fetch only needed data + lean (faster)
-    const assignment = await Assignment.findById(assignmentId)
-      .select("submissions")
-      .lean();
+    const assignment = await Assignment.findById(assignmentId).lean();
 
     if (!assignment) {
       return res.status(404).json({
@@ -388,20 +388,76 @@ export const getAssignmentSubmissions = async (req, res) => {
       });
     }
 
-    // ✅ sort (fast JS)
-    const submissions = assignment.submissions.sort(
-      (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
+    // ✅ find student submission
+    const submission = assignment.submissions.find(
+      (s) => s.studentId.toString() === student._id.toString()
     );
 
+    if (!submission) {
+      return res.status(404).json({
+        message: "No submission found",
+      });
+    }
+
     return res.status(200).json({
-      message: "Submissions fetched successfully",
-      totalSubmissions: submissions.length,
-      submissions,
+      message: "Submission fetched successfully",
+      submission,
     });
+
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error(error);
     return res.status(500).json({
-      message: "Server error",
+      message: error.message,
+    });
+  }
+};
+//DELETE API (Student – remove submission)
+export const deleteMySubmission = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+
+    const email = req.user.email;
+
+    const student = await Student.findOne({ email });
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    const assignment = await Assignment.findById(assignmentId);
+
+    if (!assignment) {
+      return res.status(404).json({
+        message: "Assignment not found",
+      });
+    }
+
+    // ✅ find index
+    const index = assignment.submissions.findIndex(
+      (s) => s.studentId.toString() === student._id.toString()
+    );
+
+    if (index === -1) {
+      return res.status(404).json({
+        message: "Submission not found",
+      });
+    }
+
+    // ✅ remove submission
+    assignment.submissions.splice(index, 1);
+
+    await assignment.save();
+
+    return res.status(200).json({
+      message: "Submission deleted successfully",
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: error.message,
     });
   }
 };

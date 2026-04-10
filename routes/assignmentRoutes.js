@@ -10,7 +10,7 @@ import {
   deleteAssignment,
   addAssignmentComment,
   submitAssignment,
-  gradeSubmission,getStudentAssignments,getAssignmentSubmissions,getAssignmentStudentStatus,addMarks
+  gradeSubmission,deleteMySubmission,getStudentAssignments,getMySubmission,getAssignmentStudentStatus,addMarks
 
   // getAssignmentDetails,
 } from '../controllers/assignmentController.js';
@@ -94,10 +94,18 @@ router.get(
   verifyToken,
   getStudentAssignments
 );
+// ✅ Get My Submission
 router.get(
-  "/assignment-submissions/:assignmentId",
+  "/my-submission/:assignmentId",
   verifyToken,
-  getAssignmentSubmissions
+  getMySubmission
+);
+
+// ✅ Delete My Submission
+router.delete(
+  "/delete-submission/:assignmentId",
+  verifyToken,
+  deleteMySubmission
 );
 
 router.get(
