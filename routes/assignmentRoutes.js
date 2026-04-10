@@ -10,7 +10,8 @@ import {
   deleteAssignment,
   addAssignmentComment,
   submitAssignment,
-  gradeSubmission,deleteMySubmission,getStudentAssignments,getMySubmission,getAssignmentStudentStatus,addMarks
+  gradeSubmission,deleteMySubmission,
+  getStudentAssignments,getMySubmission,getAssignmentStudentStatus,addMarks,removeSingleFile
 
   // getAssignmentDetails,
 } from '../controllers/assignmentController.js';
@@ -106,6 +107,12 @@ router.delete(
   "/delete-submission/:assignmentId",
   verifyToken,
   deleteMySubmission
+);
+// ✅ Remove single file from submission
+router.delete(
+  "/remove-file/:assignmentId",
+  verifyToken,
+  removeSingleFile
 );
 
 router.get(

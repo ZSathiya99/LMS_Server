@@ -461,7 +461,88 @@ export const deleteMySubmission = async (req, res) => {
     });
   }
 };
+//sinle API to get student submission details (for staff)
 
+
+export const removeSingleFile = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const { fileUrl } = req.body;
+
+    const email = req.user.email;
+
+    const student = await Student.findOne({ email });
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    const assignment = await Assignment.findById(assignmentId);
+
+    if (!assignment) {
+      return res.status(404).json({
+        message: "Assignment not found",
+      });
+    }
+
+    // ✅ get only THIS student's submission
+    const submission = assignment.submissions.find(
+      (s) => s.studentId.toString() === student._id.toString()
+    );
+
+    if (!submission) {
+      return res.status(404).json({
+        message: "Submission not found",
+      });
+    }
+
+    // ✅ IMPORTANT: exact match check
+    const fileExists = submission.attachments.includes(fileUrl);
+
+    if (!fileExists) {
+      return res.status(404).json({
+        message: "File not found in your submission",
+      });
+    }
+
+    // ✅ remove file from array
+    submission.attachments = submission.attachments.filter(
+      (file) => file !== fileUrl
+    );
+
+    // ✅ delete physical file
+    let filename;
+
+    if (fileUrl.includes("/uploads/")) {
+      filename = fileUrl.split("/uploads/")[1];
+    }
+
+    if (filename) {
+      const filePath = path.join("uploads", filename);
+
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.log("File delete error:", err.message);
+        }
+      });
+    }
+
+    await assignment.save();
+
+    return res.status(200).json({
+      message: "File removed successfully",
+      remainingFiles: submission.attachments,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 /* =====================================================
    GRADE SUBMISSION (STAFF)
 ===================================================== */
