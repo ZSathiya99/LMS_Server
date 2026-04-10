@@ -297,9 +297,15 @@ export const submitAssignment = async (req, res) => {
   try {
     const { assignmentId } = req.params;
 
-    // ✅ FIXED (based on your token)
-    const studentId = req.user.id;
+    const email = req.user.email;
+    const student = await Student.findOne({ email }).lean();
 
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    } 
+    const studentId = student._id;
     if (!studentId) {
       return res.status(400).json({
         message: "Student ID missing in token",
