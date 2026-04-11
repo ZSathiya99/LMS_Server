@@ -1,9 +1,10 @@
-import mongoose from 'mongoose';
-import Assignment from '../models/Assignment.js';
-import ClassroomMembers from '../models/ClassroomMembers.js';
+import mongoose from "mongoose";
+import Assignment from "../models/Assignment.js";
+import ClassroomMembers from "../models/ClassroomMembers.js";
 import Student from "../models/Student.js";
-import AdminAllocation from '../models/adminAllocationModel.js';
-
+import AdminAllocation from "../models/adminAllocationModel.js";
+import fs from "fs";
+import path from "path";
 
 /* =====================================================
    CREATE ASSIGNMENT
@@ -19,14 +20,14 @@ export const createAssignment = async (req, res) => {
       youtubeLink,
       dueDate,
       questions,
-      marks
+      marks,
     } = req.body;
 
     const staffId = req.user.facultyId;
 
     if (!subjectId || !sectionId || !title || !dueDate || !marks) {
       return res.status(400).json({
-        message: 'subjectId, sectionId, title, due date and marks are required'
+        message: "subjectId, sectionId, title, due date and marks are required",
       });
     }
 
@@ -35,20 +36,20 @@ export const createAssignment = async (req, res) => {
       !mongoose.Types.ObjectId.isValid(sectionId)
     ) {
       return res.status(400).json({
-        message: 'Invalid subjectId or sectionId'
+        message: "Invalid subjectId or sectionId",
       });
     }
 
     if (Number(marks) <= 0) {
       return res.status(400).json({
-        message: 'Marks must be greater than 0'
+        message: "Marks must be greater than 0",
       });
     }
 
     const uploadedFiles =
       req.files?.map(
         (file) =>
-          `${req.protocol}://${req.get('host')}/uploads/${file.filename}`
+          `${req.protocol}://${req.get("host")}/uploads/${file.filename}`,
       ) || [];
 
     const assignment = await Assignment.create({
@@ -56,23 +57,23 @@ export const createAssignment = async (req, res) => {
       sectionId, // 🔥 added
       staffId,
       title,
-      instruction: instruction || '',
+      instruction: instruction || "",
       attachments: uploadedFiles,
-      link: link || '',
-      youtubeLink: youtubeLink || '',
+      link: link || "",
+      youtubeLink: youtubeLink || "",
       dueDate,
       marks: Number(marks),
-      questions: questions || '',
+      questions: questions || "",
       comments: [],
-      submissions: []
+      submissions: [],
     });
 
     return res.status(201).json({
-      message: 'Assignment created successfully',
-      data: assignment
+      message: "Assignment created successfully",
+      data: assignment,
     });
   } catch (error) {
-    console.error('Create Assignment Error:', error);
+    console.error("Create Assignment Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -89,16 +90,16 @@ export const getAssignmentsBySubject = async (req, res) => {
       !mongoose.Types.ObjectId.isValid(subjectId) ||
       !mongoose.Types.ObjectId.isValid(sectionId)
     ) {
-      return res.status(400).json({ message: 'Invalid ID' });
+      return res.status(400).json({ message: "Invalid ID" });
     }
 
     /* 1️⃣ Get Classroom Students */
     const classroomStudents = await ClassroomMembers.find({
       subjectId,
-      sectionId // 🔥 added
+      sectionId, // 🔥 added
     }).populate(
-      'studentId',
-      'firstName lastName registerNumber email profileImg'
+      "studentId",
+      "firstName lastName registerNumber email profileImg",
     );
 
     const totalStudents = classroomStudents.length;
@@ -107,7 +108,7 @@ export const getAssignmentsBySubject = async (req, res) => {
     const assignments = await Assignment.find({
       subjectId,
       sectionId, // 🔥 added
-      staffId // 🔥 prevent cross-staff
+      staffId, // 🔥 prevent cross-staff
     }).sort({ createdAt: -1 });
 
     /* 3️⃣ Build Response */
@@ -115,21 +116,21 @@ export const getAssignmentsBySubject = async (req, res) => {
       const assignmentData = assignment.toObject();
 
       const submittedIds = assignment.submissions.map((s) =>
-        s.studentId.toString()
+        s.studentId.toString(),
       );
 
       const submittedStudents = classroomStudents
         .filter((stu) => submittedIds.includes(stu.studentId._id.toString()))
         .map((stu) => {
           const submission = assignment.submissions.find(
-            (s) => s.studentId.toString() === stu.studentId._id.toString()
+            (s) => s.studentId.toString() === stu.studentId._id.toString(),
           );
 
           return {
             ...stu.studentId.toObject(),
             submittedAt: submission?.submittedAt,
             marksObtained: submission?.marksObtained,
-            attachment: submission?.attachment
+            attachment: submission?.attachment,
           };
         });
 
@@ -139,29 +140,29 @@ export const getAssignmentsBySubject = async (req, res) => {
 
       return {
         ...assignmentData,
-        key: 'Assignment',
+        key: "Assignment",
 
         stats: {
           totalStudents,
           submitted: submittedStudents.length,
           pending: pendingStudents.length,
-          comments: assignment.comments.length
+          comments: assignment.comments.length,
         },
 
         students: {
           all: classroomStudents.map((stu) => stu.studentId),
           submitted: submittedStudents,
-          pending: pendingStudents
-        }
+          pending: pendingStudents,
+        },
       };
     });
 
     return res.status(200).json({
       totalAssignments: result.length,
-      assignments: result
+      assignments: result,
     });
   } catch (error) {
-    console.error('Get Assignments Error:', error);
+    console.error("Get Assignments Error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -175,16 +176,16 @@ export const getSingleAssignment = async (req, res) => {
     const staffId = req.user.facultyId;
 
     if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
-      return res.status(400).json({ message: 'Invalid Assignment ID' });
+      return res.status(400).json({ message: "Invalid Assignment ID" });
     }
 
     const assignment = await Assignment.findOne({
       _id: assignmentId,
-      staffId // 🔥 prevent cross access
+      staffId, // 🔥 prevent cross access
     });
 
     if (!assignment) {
-      return res.status(404).json({ message: 'Assignment not found' });
+      return res.status(404).json({ message: "Assignment not found" });
     }
 
     return res.status(200).json(assignment);
@@ -202,22 +203,22 @@ export const updateAssignment = async (req, res) => {
     const staffId = req.user.facultyId;
 
     if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
-      return res.status(400).json({ message: 'Invalid Assignment ID' });
+      return res.status(400).json({ message: "Invalid Assignment ID" });
     }
 
     const updated = await Assignment.findOneAndUpdate(
       { _id: assignmentId, staffId },
       req.body,
-      { new: true }
+      { new: true },
     );
 
     if (!updated) {
-      return res.status(404).json({ message: 'Assignment not found' });
+      return res.status(404).json({ message: "Assignment not found" });
     }
 
     return res.status(200).json({
-      message: 'Assignment updated successfully',
-      data: updated
+      message: "Assignment updated successfully",
+      data: updated,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -233,20 +234,20 @@ export const deleteAssignment = async (req, res) => {
     const staffId = req.user.facultyId;
 
     if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
-      return res.status(400).json({ message: 'Invalid Assignment ID' });
+      return res.status(400).json({ message: "Invalid Assignment ID" });
     }
 
     const deleted = await Assignment.findOneAndDelete({
       _id: assignmentId,
-      staffId
+      staffId,
     });
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Assignment not found' });
+      return res.status(404).json({ message: "Assignment not found" });
     }
 
     return res.status(200).json({
-      message: 'Assignment deleted successfully'
+      message: "Assignment deleted successfully",
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -262,26 +263,26 @@ export const addAssignmentComment = async (req, res) => {
     const { comment } = req.body;
 
     if (!comment) {
-      return res.status(400).json({ message: 'Comment required' });
+      return res.status(400).json({ message: "Comment required" });
     }
 
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) {
-      return res.status(404).json({ message: 'Assignment not found' });
+      return res.status(404).json({ message: "Assignment not found" });
     }
 
     assignment.comments.push({
       userId:
-        req.user.role === 'faculty' ? req.user.facultyId : req.user.studentId,
-      userType: req.user.role === 'faculty' ? 'staff' : 'student',
-      comment
+        req.user.role === "faculty" ? req.user.facultyId : req.user.studentId,
+      userType: req.user.role === "faculty" ? "staff" : "student",
+      comment,
     });
 
     await assignment.save();
 
     return res.status(201).json({
-      message: 'Comment added successfully',
-      comments: assignment.comments
+      message: "Comment added successfully",
+      comments: assignment.comments,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -291,7 +292,6 @@ export const addAssignmentComment = async (req, res) => {
 /* =====================================================
    STUDENT SUBMIT ASSIGNMENT
 ===================================================== */
-
 
 export const submitAssignment = async (req, res) => {
   try {
@@ -304,7 +304,7 @@ export const submitAssignment = async (req, res) => {
       return res.status(404).json({
         message: "Student not found",
       });
-    } 
+    }
     const studentId = student._id;
     if (!studentId) {
       return res.status(400).json({
@@ -330,13 +330,12 @@ export const submitAssignment = async (req, res) => {
 
     // ✅ create file URLs
     const fileUrls = files.map(
-      (file) =>
-        `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+      (file) => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`,
     );
 
     // 🔍 check existing submission
     const existing = assignment.submissions.find(
-      (s) => s.studentId.toString() === studentId.toString()
+      (s) => s.studentId.toString() === studentId.toString(),
     );
 
     if (existing) {
@@ -390,7 +389,7 @@ export const getMySubmission = async (req, res) => {
 
     // ✅ find student submission
     const submission = assignment.submissions.find(
-      (s) => s.studentId.toString() === student._id.toString()
+      (s) => s.studentId.toString() === student._id.toString(),
     );
 
     if (!submission) {
@@ -403,7 +402,6 @@ export const getMySubmission = async (req, res) => {
       message: "Submission fetched successfully",
       submission,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -436,7 +434,7 @@ export const deleteMySubmission = async (req, res) => {
 
     // ✅ find index
     const index = assignment.submissions.findIndex(
-      (s) => s.studentId.toString() === student._id.toString()
+      (s) => s.studentId.toString() === student._id.toString(),
     );
 
     if (index === -1) {
@@ -453,7 +451,6 @@ export const deleteMySubmission = async (req, res) => {
     return res.status(200).json({
       message: "Submission deleted successfully",
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -461,16 +458,26 @@ export const deleteMySubmission = async (req, res) => {
     });
   }
 };
-//sinle API to get student submission details (for staff)
+
+// DELETE SINGLE FILE FROM SUBMISSION
+
 
 
 export const removeSingleFile = async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const { fileUrl } = req.body;
+    let { fileUrl } = req.body;
 
+    if (!fileUrl) {
+      return res.status(400).json({
+        message: "fileUrl is required",
+      });
+    }
+
+    fileUrl = fileUrl.trim();
+
+    // ✅ SAME AS SUBMIT API
     const email = req.user.email;
-
     const student = await Student.findOne({ email });
 
     if (!student) {
@@ -479,6 +486,9 @@ export const removeSingleFile = async (req, res) => {
       });
     }
 
+    const studentId = student._id;
+
+    // ✅ find assignment
     const assignment = await Assignment.findById(assignmentId);
 
     if (!assignment) {
@@ -487,9 +497,9 @@ export const removeSingleFile = async (req, res) => {
       });
     }
 
-    // ✅ get only THIS student's submission
+    // ✅ find submission
     const submission = assignment.submissions.find(
-      (s) => s.studentId.toString() === student._id.toString()
+      (s) => String(s.studentId) === String(studentId)
     );
 
     if (!submission) {
@@ -498,36 +508,38 @@ export const removeSingleFile = async (req, res) => {
       });
     }
 
-    // ✅ IMPORTANT: exact match check
-    const fileExists = submission.attachments.includes(fileUrl);
+    // ✅ filename match (FIXED)
+   const incomingFileName = fileUrl.trim().split("/").pop();
+   console.log("Incoming:", incomingFileName);
 
-    if (!fileExists) {
+submission.attachments.forEach((file) => {
+  console.log("Stored:", file.split("/").pop());
+});
+
+const fileIndex = submission.attachments.findIndex((file) => {
+  const storedFileName = file.split("/").pop();
+  return storedFileName === incomingFileName;
+});
+
+    // ✅ IMPORTANT CHECK (you missed this)
+    if (fileIndex === -1) {
       return res.status(404).json({
         message: "File not found in your submission",
       });
     }
 
-    // ✅ remove file from array
-    submission.attachments = submission.attachments.filter(
-      (file) => file !== fileUrl
-    );
+    // ✅ remove file
+    const removedFile = submission.attachments[fileIndex];
+    submission.attachments.splice(fileIndex, 1);
 
     // ✅ delete physical file
-    let filename;
+    const filename = removedFile.split("/").pop();
+    const filePath = path.join(process.cwd(), "uploads", filename);
 
-    if (fileUrl.includes("/uploads/")) {
-      filename = fileUrl.split("/uploads/")[1];
-    }
-
-    if (filename) {
-      const filePath = path.join("uploads", filename);
-
-      fs.unlink(filePath, (err) => {
-        if (err) {
-          console.log("File delete error:", err.message);
-        }
-      });
-    }
+    fs.unlink(filePath, (err) => {
+      if (err) console.log("File delete error:", err.message);
+      else console.log("File deleted:", filename);
+    });
 
     await assignment.save();
 
@@ -553,23 +565,23 @@ export const gradeSubmission = async (req, res) => {
 
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) {
-      return res.status(404).json({ message: 'Assignment not found' });
+      return res.status(404).json({ message: "Assignment not found" });
     }
 
     const submission = assignment.submissions.find(
-      (s) => s.studentId.toString() === studentId
+      (s) => s.studentId.toString() === studentId,
     );
 
     if (!submission) {
-      return res.status(404).json({ message: 'Submission not found' });
+      return res.status(404).json({ message: "Submission not found" });
     }
 
     submission.marksObtained = marksObtained;
     await assignment.save();
 
     return res.json({
-      message: 'Marks updated successfully',
-      submission
+      message: "Marks updated successfully",
+      submission,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -577,7 +589,6 @@ export const gradeSubmission = async (req, res) => {
 };
 
 //GET API (Student Assignment)
-
 
 export const getStudentAssignments = async (req, res) => {
   try {
@@ -646,7 +657,7 @@ export const getStudentAssignments = async (req, res) => {
       for (const sub of allocation.subjects) {
         if (sub.subjectId.toString() === subjectId.toString()) {
           const section = sub.sections.find(
-            (s) => s._id.toString() === sectionId.toString()
+            (s) => s._id.toString() === sectionId.toString(),
           );
 
           if (section) {
@@ -692,13 +703,10 @@ export const getStudentAssignments = async (req, res) => {
   }
 };
 
-
 //You must combine 2 data sources:
 
 // ClassroomMember → all students
 // Assignment.submissions → submitted students
-
-
 
 export const getAssignmentStudentStatus = async (req, res) => {
   try {
@@ -725,36 +733,40 @@ export const getAssignmentStudentStatus = async (req, res) => {
 
     const submissions = assignment.submissions || [];
 
-    const result = members.map((member) => {
-      const student = member.userId;
-      if (!student) return null;
+    const result = members
+      .map((member) => {
+        const student = member.userId;
+        if (!student) return null;
 
-      const studentId = student._id.toString();
+        const studentId = student._id.toString();
 
-      const submission = submissions.find(
-        (s) => s.studentId.toString() === studentId
-      );
+        const submission = submissions.find(
+          (s) => s.studentId.toString() === studentId,
+        );
 
-      // ✅ condition
-      const isSubmitted =
-        submission && submission.attachments && submission.attachments.length > 0;
+        // ✅ condition
+        const isSubmitted =
+          submission &&
+          submission.attachments &&
+          submission.attachments.length > 0;
 
-      return {
-        assignmentId,
-        studentId,
-        name: student.firstName,
-        email: student.email,
-        profileImage: student.profileImage,
+        return {
+          assignmentId,
+          studentId,
+          name: student.firstName,
+          email: student.email,
+          profileImage: student.profileImage,
 
-        // ✅ FINAL STATUS LOGIC
-        status: isSubmitted ? "submitted" : "",
+          // ✅ FINAL STATUS LOGIC
+          status: isSubmitted ? "submitted" : "",
 
-        attachments: isSubmitted ? submission.attachments : [],
-        marksObtained: submission?.marksObtained ?? null,
-        totalMarks: assignment.marks || 100,
-        submittedAt: isSubmitted ? submission.submittedAt : null,
-      };
-    }).filter(Boolean);
+          attachments: isSubmitted ? submission.attachments : [],
+          marksObtained: submission?.marksObtained ?? null,
+          totalMarks: assignment.marks || 100,
+          submittedAt: isSubmitted ? submission.submittedAt : null,
+        };
+      })
+      .filter(Boolean);
 
     return res.status(200).json({
       message: "Student assignment status fetched",
@@ -787,12 +799,12 @@ export const addMarks = async (req, res) => {
     // 🔍 debug
     console.log(
       "DB studentIds:",
-      assignment.submissions.map(s => s.studentId.toString())
+      assignment.submissions.map((s) => s.studentId.toString()),
     );
     console.log("Request studentId:", studentId);
 
     const submission = assignment.submissions.find(
-      (s) => s.studentId.toString() === studentId
+      (s) => s.studentId.toString() === studentId,
     );
 
     if (!submission) {
